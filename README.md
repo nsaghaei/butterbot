@@ -6,15 +6,19 @@ The current game is **Maker Garden**: one character, a garden, and a printer tha
 
 ## Current checkpoint
 
-The launcher selects **frozen v11**, build `2026-09-25.11`. **176/176 offline tests passed.** The live wash → sit → bed-rest request completed all six approach/use steps in 88.17 simulation seconds, with recorded hygiene, comfort and energy recovery. Butterbot then independently selected and completed another bed rest. The browser console reported zero errors.
+The launcher selects **frozen v15**, build `2026-09-25.15`. **213/213 offline tests passed.** The full tulip pickup → carry → throw → retrieve → place request completed **all seven physical actions and all seven Gemma audits**, with no errors, rejected audits or navigation recoveries. Retrieval followed the actual landed object; placement recorded its release at the requested point.
 
-v11 checks proposed walking destinations against the actual character capsule during planning and again before execution, finds clear approaches beside furniture, and allows two bounded repairs of a blocked route's remaining plan. Verified steps and the repair budget survive save/restore. The successful rerun follows the v10 failure that tried to walk into the bench. One visual issue remains: the reclining robot keeps its arrival heading and can lie across the bed instead of along its pillow axis; alignment is the next follow-up.
+“Eat the park bench” was rejected by the first proposed plan with the precise wood/`edible:false` explanation and zero actions. The placement/refusal cards were visually verified and the browser console had no errors. Memory curation reduced 12 entries to eight, although duplicates remain. One UI follow-up: a refused request without a plan still shows “Gemma is preparing the plan” in the collapsed plan row. The broader Sims-like game remains unfinished.
+
+v15 supplies Gemma the engine's exact completion criteria and immutable action-time evidence. Approaching means reaching the selected clear point beside an object, within 0.18 m, rather than touching its center. Placement is checked against the recorded release before gravity settles the object. Compact Laya context preserves the full objective, ordered plan and all object names/positions; full verification prose stays in diagnostics.
+
+Navigation validates destinations against the character capsule at planning and execution, finds clear furniture approaches, and allows two bounded repairs of a blocked route's remaining plan. Verified steps and the repair budget survive save/restore; this is not a general route planner.
 
 The garden has six decaying needs, a starter daybed, bench, physical shower and six finite orange servings, with recovery tied to completed actions and their actual duration.
 
-The previous frozen v9 passed **147/147 offline tests** and completed both an exact walk → dance → observe request with a hunger interruption/resumption, and an explicit print-orange → pickup → eat request. These remain historical results, not verification of every later change. See [PLAYTESTS.md](outputs/maker/PLAYTESTS.md) for outcomes and [HANDOFF.md](HANDOFF.md) for continuation work.
+Earlier verified runs include v11's complete wash → sit → bed-rest request and autonomous follow-on rest, and v9's exact walk/dance/observation and print-orange/eat requests. These remain historical results, not verification of every later change. See [PLAYTESTS.md](outputs/maker/PLAYTESTS.md) for outcomes and [HANDOFF.md](HANDOFF.md) for continuation work.
 
-The foundation includes user and autonomous goals, physical object interactions, persistence, bounded construction generation, diagnostics and deduplicated memories. The needs are energy, hunger, fun, hygiene, comfort and social. Butterbot is still the only active character: social need cannot be fulfilled alone, and distinct neighbors, conversations and a full sleep cycle remain unfinished.
+The foundation includes user and autonomous goals, physical object interactions, persistence, bounded construction generation, diagnostics and deduplicated memories. Reflection receives the complete editable memory store, so Gemma can revise or forget paraphrases without automatic semantic deletion. The needs are energy, hunger, fun, hygiene, comfort and social. Butterbot is still the only active character: social need cannot be fulfilled alone, and distinct neighbors, conversations and a full sleep cycle remain unfinished. The [first social milestone](outputs/maker/SOCIAL_PLAN.md) is a continuation plan, not implemented social gameplay.
 
 ## How it works
 
@@ -95,10 +99,11 @@ From the repository root, run `node work/build-ui.cjs` to build the browser bund
 | `outputs/maker/web-next/` | Browser interface and character rendering |
 | `outputs/maker/needs.mjs`, `autonomy.mjs` | Need decay, physical fulfillment, starter objects and grounded goal proposals |
 | `outputs/maker/tests/` | Includes capsule destinations, clear furniture approaches, posture transitions and bounded navigation recovery |
-| `outputs/maker/releases/` | Immutable application checkpoints; launcher defaults to v11 |
+| `outputs/maker/execution-evidence.mjs` | Recorded completion evidence and shared navigation tolerance for verification |
+| `outputs/maker/releases/` | Immutable application checkpoints; launcher defaults to v15 |
 | `outputs/maker/HANDOFF-*.md` | Scoped implementation notes; some describe earlier checkpoints |
 | `work/` | Tracked UI build and release scripts |
 
 Dependencies are pinned in `pnpm-lock.yaml`; bundled Ammo files retain their attribution. Model downloads, installed dependencies, logs, saved scenes, and raw playtest evidence are excluded from Git.
 
-The next milestone is a reliably useful and expressive single character. Verify the new accommodations, persistence, need interruptions and animations in real-model playtests before expanding the cast and social behavior.
+The next milestone is a reliably useful and expressive single character. Correct the refused-plan status text and broaden persistence, cancellation, memory and object-interaction checks before enabling the planned second character.

@@ -1,0 +1,571 @@
+{
+  "objective": "Pick up the Orange Tulip (item-1), carry it to (-2,3), gently throw it toward (0,3) at 2 m/s, go retrieve it, and place it at (2,3).",
+  "planSteps": [
+    {
+      "action": "approach",
+      "target": "item-1",
+      "recipient": "",
+      "x": 0,
+      "z": 0,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Approach the Orange Tulip"
+    },
+    {
+      "action": "pick_up",
+      "target": "item-1",
+      "recipient": "",
+      "x": 0,
+      "z": 0,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Pick up the Orange Tulip"
+    },
+    {
+      "action": "move",
+      "target": "",
+      "recipient": "",
+      "x": -2,
+      "z": 3,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Move to (-2,3)"
+    },
+    {
+      "action": "throw",
+      "target": "item-1",
+      "recipient": "",
+      "x": 0,
+      "z": 3,
+      "speed": 2,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Throw the tulip toward (0,3) at 2 m/s"
+    },
+    {
+      "action": "move",
+      "target": "",
+      "recipient": "",
+      "x": 0,
+      "z": 3,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Move to the thrown tulip at (0,3)"
+    },
+    {
+      "action": "pick_up",
+      "target": "item-1",
+      "recipient": "",
+      "x": 0,
+      "z": 0,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Pick up the Orange Tulip"
+    },
+    {
+      "action": "move",
+      "target": "",
+      "recipient": "",
+      "x": 2,
+      "z": 3,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Move to (2,3)"
+    },
+    {
+      "action": "place",
+      "target": "item-1",
+      "recipient": "",
+      "x": 2,
+      "z": 3,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Place the Orange Tulip at (2,3)"
+    }
+  ],
+  "planIndex": 0,
+  "stage": "failed",
+  "actorId": "actor",
+  "actorName": "Butterbot",
+  "needs": {
+    "energy": 88.5315333331968,
+    "fun": 66.82259999991908,
+    "hunger": 37.96043749997967,
+    "hygiene": 88.87500000001012,
+    "social": 40.91733333328057,
+    "comfort": 98.48799999999756
+  },
+  "core": {
+    "name": "Butterbot",
+    "style": "inventive, curious, gently theatrical",
+    "interests": [
+      "exploration",
+      "useful things"
+    ]
+  },
+  "style": "inventive, curious, gently theatrical",
+  "goalSource": "user",
+  "stepResults": {},
+  "worldObjects": [
+    {
+      "id": "printer",
+      "name": "Idea printer",
+      "description": "A fixed fabrication station. Approach its keyboard to design and print supported physical objects.",
+      "kind": "fixture",
+      "position": {
+        "x": -11.45,
+        "y": 1,
+        "z": 0
+      },
+      "approach": {
+        "x": -8.75,
+        "y": 1,
+        "z": 0
+      },
+      "dimensions": [
+        2.6,
+        2,
+        3.4
+      ],
+      "affordances": [
+        "print"
+      ],
+      "mass": null,
+      "attributes": {
+        "portable": false,
+        "anchored": true,
+        "edible": false,
+        "servings": 0,
+        "throwable": false,
+        "maxThrowSpeed": 0,
+        "giftable": false,
+        "pushable": false
+      },
+      "availableUses": [
+        "inspect",
+        "print"
+      ],
+      "blockedActions": {
+        "pick_up": "Idea printer is an anchored fixture",
+        "throw": "Idea printer is an anchored fixture",
+        "give": "Idea printer is an anchored fixture",
+        "push": "Idea printer is an anchored fixture",
+        "eat": "Idea printer is not edible"
+      },
+      "edible": false,
+      "servings": 0
+    },
+    {
+      "id": "planter",
+      "name": "Flower bed",
+      "description": "A fixed raised planter of decorative flowers. It is an obstacle; these flowers are not edible resources.",
+      "kind": "fixture",
+      "position": {
+        "x": 6,
+        "y": 0.5,
+        "z": -7
+      },
+      "dimensions": [
+        4,
+        1,
+        1.6
+      ],
+      "affordances": [
+        "inspect"
+      ],
+      "mass": null,
+      "attributes": {
+        "portable": false,
+        "anchored": true,
+        "edible": false,
+        "servings": 0,
+        "throwable": false,
+        "maxThrowSpeed": 0,
+        "giftable": false,
+        "pushable": false
+      },
+      "availableUses": [
+        "inspect"
+      ],
+      "blockedActions": {
+        "pick_up": "Flower bed is an anchored fixture",
+        "throw": "Flower bed is an anchored fixture",
+        "give": "Flower bed is an anchored fixture",
+        "push": "Flower bed is an anchored fixture",
+        "eat": "Flower bed is not edible"
+      },
+      "edible": false,
+      "servings": 0
+    },
+    {
+      "id": "item-1",
+      "name": "Orange Tulip",
+      "description": "A vibrant, matte-finished orange tulip with a sturdy green stem and a wide base, designed for display in garden settings.",
+      "descriptionSource": "creator",
+      "kind": "prop",
+      "position": {
+        "x": 2.2895331382751465,
+        "y": 0.23981067538261414,
+        "z": 2.4945006370544434
+      },
+      "affordances": [
+        "display"
+      ],
+      "availableUses": [
+        "inspect",
+        "display",
+        "pick_up",
+        "place",
+        "drop",
+        "throw",
+        "give",
+        "push"
+      ],
+      "blockedActions": {
+        "eat": "Orange Tulip is not edible"
+      },
+      "material": "polymer",
+      "mass": 1.2,
+      "dimensions": [
+        0.75,
+        1.1250000484287739,
+        0.5
+      ],
+      "attributes": {
+        "portable": true,
+        "anchored": false,
+        "edible": false,
+        "servings": 0,
+        "throwable": true,
+        "maxThrowSpeed": 5,
+        "giftable": true,
+        "pushable": true
+      },
+      "owner": "actor",
+      "heldBy": null,
+      "edible": false,
+      "servings": 0
+    },
+    {
+      "id": "home-bed",
+      "name": "Garden daybed",
+      "description": "A sturdy wooden daybed with a soft teal mattress and a cream pillow. Supports lying down to rest.",
+      "descriptionSource": "creator",
+      "kind": "prop",
+      "position": {
+        "x": 6,
+        "y": 0.5550000071525574,
+        "z": 5
+      },
+      "affordances": [
+        "rest"
+      ],
+      "availableUses": [
+        "inspect",
+        "rest"
+      ],
+      "blockedActions": {
+        "pick_up": "Garden daybed weighs 48kg; lifting limit is 12kg",
+        "eat": "Garden daybed is not edible",
+        "throw": "Garden daybed weighs 48kg; lifting limit is 12kg",
+        "give": "Garden daybed weighs 48kg; lifting limit is 12kg",
+        "push": "Garden daybed is anchored and cannot be pushed"
+      },
+      "material": "wood",
+      "mass": 48,
+      "dimensions": [
+        1.350000023841858,
+        1.0700000488758088,
+        2.284999966621399
+      ],
+      "attributes": {
+        "portable": false,
+        "anchored": true,
+        "edible": false,
+        "servings": 0,
+        "throwable": false,
+        "maxThrowSpeed": 0,
+        "giftable": false,
+        "pushable": false
+      },
+      "owner": "actor",
+      "heldBy": null,
+      "edible": false,
+      "servings": 0
+    },
+    {
+      "id": "garden-shower",
+      "name": "Garden shower",
+      "description": "An anchored shower with a tiled tray, drain, upright pipe and overhead showerhead. Supports washing.",
+      "descriptionSource": "creator",
+      "kind": "prop",
+      "position": {
+        "x": 7,
+        "y": 1.3774999380111694,
+        "z": -3
+      },
+      "approach": {
+        "x": 7,
+        "y": 1.3249999775737522,
+        "z": -3
+      },
+      "wash": {
+        "stand": {
+          "x": 7,
+          "y": 1.3249999775737522,
+          "z": -3
+        },
+        "outlet": {
+          "x": 7,
+          "y": 2.664999961182475,
+          "z": -3
+        },
+        "seconds": 6
+      },
+      "affordances": [
+        "wash"
+      ],
+      "availableUses": [
+        "inspect",
+        "wash"
+      ],
+      "blockedActions": {
+        "pick_up": "Garden shower weighs 72kg; lifting limit is 12kg",
+        "eat": "Garden shower is not edible",
+        "throw": "Garden shower weighs 72kg; lifting limit is 12kg",
+        "give": "Garden shower weighs 72kg; lifting limit is 12kg",
+        "push": "Garden shower is anchored and cannot be pushed"
+      },
+      "material": "metal",
+      "mass": 72,
+      "dimensions": [
+        1.649999976158142,
+        2.714999912828207,
+        1.649999976158142
+      ],
+      "attributes": {
+        "portable": false,
+        "anchored": true,
+        "edible": false,
+        "servings": 0,
+        "throwable": false,
+        "maxThrowSpeed": 0,
+        "giftable": false,
+        "pushable": false
+      },
+      "owner": "actor",
+      "heldBy": null,
+      "edible": false,
+      "servings": 0
+    },
+    {
+      "id": "park-bench",
+      "name": "Park bench",
+      "description": "An anchored wooden bench with a slatted seat and back. Supports sitting for comfort.",
+      "descriptionSource": "creator",
+      "kind": "prop",
+      "position": {
+        "x": 2,
+        "y": 0.6299999952316284,
+        "z": -5
+      },
+      "affordances": [
+        "sit"
+      ],
+      "availableUses": [
+        "inspect",
+        "sit"
+      ],
+      "blockedActions": {
+        "pick_up": "Park bench weighs 36kg; lifting limit is 12kg",
+        "eat": "Park bench is not edible",
+        "throw": "Park bench weighs 36kg; lifting limit is 12kg",
+        "give": "Park bench weighs 36kg; lifting limit is 12kg",
+        "push": "Park bench is anchored and cannot be pushed"
+      },
+      "material": "wood",
+      "mass": 36,
+      "dimensions": [
+        1.7000000476837158,
+        1.2200000298023224,
+        0.6400000154972076
+      ],
+      "attributes": {
+        "portable": false,
+        "anchored": true,
+        "edible": false,
+        "servings": 0,
+        "throwable": false,
+        "maxThrowSpeed": 0,
+        "giftable": false,
+        "pushable": false
+      },
+      "owner": "actor",
+      "heldBy": null,
+      "edible": false,
+      "servings": 0
+    },
+    {
+      "id": "snack-bowl",
+      "name": "Bowl of oranges",
+      "description": "A blue bowl containing six edible orange servings. Each eating action consumes one serving; the supply is finite.",
+      "descriptionSource": "creator",
+      "kind": "prop",
+      "position": {
+        "x": 2.675870418548584,
+        "y": 0.15094341337680817,
+        "z": 1.0734529495239258
+      },
+      "affordances": [
+        "display"
+      ],
+      "availableUses": [
+        "inspect",
+        "display",
+        "pick_up",
+        "place",
+        "drop",
+        "give",
+        "push",
+        "eat"
+      ],
+      "blockedActions": {
+        "throw": "Bowl of oranges cannot be thrown"
+      },
+      "material": "food",
+      "mass": 1.8,
+      "dimensions": [
+        0.6899999976158142,
+        0.30499998666346073,
+        0.6899999976158142
+      ],
+      "attributes": {
+        "portable": true,
+        "anchored": false,
+        "edible": true,
+        "servings": 5,
+        "throwable": false,
+        "maxThrowSpeed": 0,
+        "giftable": true,
+        "pushable": true
+      },
+      "owner": "actor",
+      "heldBy": null,
+      "edible": true,
+      "servings": 5
+    }
+  ],
+  "entities": [
+    {
+      "id": "actor",
+      "position": {
+        "x": 6,
+        "y": 1.8150957822799683,
+        "z": 5
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "carried": false,
+      "servings": 0
+    },
+    {
+      "id": "item-1",
+      "position": {
+        "x": 2.2895331382751465,
+        "y": 0.23981067538261414,
+        "z": 2.4945006370544434
+      },
+      "rotation": {
+        "x": -0.6731698513031006,
+        "y": 0.10893439501523972,
+        "z": 0.10123342275619507,
+        "w": 0.7243807315826416
+      },
+      "carried": false,
+      "servings": 0
+    },
+    {
+      "id": "home-bed",
+      "position": {
+        "x": 6,
+        "y": 0.5550000071525574,
+        "z": 5
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "carried": false,
+      "servings": 0
+    },
+    {
+      "id": "garden-shower",
+      "position": {
+        "x": 7,
+        "y": 1.3774999380111694,
+        "z": -3
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "carried": false,
+      "servings": 0
+    },
+    {
+      "id": "park-bench",
+      "position": {
+        "x": 2,
+        "y": 0.6299999952316284,
+        "z": -5
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "carried": false,
+      "servings": 0
+    },
+    {
+      "id": "snack-bowl",
+      "position": {
+        "x": 2.675870418548584,
+        "y": 0.15094341337680817,
+        "z": 1.0734529495239258
+      },
+      "rotation": {
+        "x": 1.1819844658589318e-8,
+        "y": 0.43085944652557373,
+        "z": -6.707011390716389e-9,
+        "w": 0.9024190902709961
+      },
+      "carried": false,
+      "servings": 5
+    }
+  ]
+}

@@ -1,17 +1,71 @@
 # Gameplay verification
 
-These are observations from the actual local game using Gemma and Laya. Offline regressions are separate: **v11 passed 176/176; v10 passed 162/162; v9 passed 147/147**. Saved scenes, prompts and raw diagnostic exports stay outside Git.
+These are observations from the actual local game using Gemma and Laya. Offline regressions are separate: **v15 passed 213/213; v14 208/208; v13 202/202; v12 196/196; v11 176/176; v10 162/162; v9 147/147**. Saved scenes, prompts and raw diagnostic exports stay outside Git.
+
+## September 25, 2026 — frozen v15
+
+Build `2026-09-25.15` is the current live release. Gemma receives exact engine execution criteria and immutable completion evidence; compact Laya context separates verification prose from real engine blockers.
+
+| Check | Observed result |
+| --- | --- |
+| Full offline regression suite. | **213/213 passed.** |
+| “Pick up the Orange Tulip (item-1), carry it to (-2,3), gently throw it toward (0,3) at 2 m/s, go retrieve it, and place it at (2,3).” | **Passed, cycle 174: 7/7 physical actions and seven successful Gemma audits.** Pickup → move `(-2,3)` → throw toward `(0,3)` at `2 m/s` → approach the actual landed item → pickup → move `(2,3)` → place `(2,3)`. Initial approach was omitted because the object was already nearby. No `not_verified`, error or navigation recovery occurred. |
+| Duration and final placement. | First plan proposal `4700.6667`, first physical completion `4703.1`, final result `4747.8667`: **47.20 simulation seconds from plan proposal to completion**. Recorded release was `(2, 0.6825, 3)`, `carried:false`, `carrier:null`. The object settled near `(2.0062, 0.5614, 2.9574)`; later settling did not invalidate the actual release. |
+| “Eat the park bench.” | **Correctly rejected, cycle 175.** One unsupported activity plan explained that the wooden bench has `edible:false`. Zero actions and no three-attempt retry loop. |
+| Memory curation. | Reflections across cycles 174/175 consolidated **12 entries to eight**. Some duplicates remain; this is useful progress, not perfected semantic memory. |
+| Browser and visible cards. | Browser console error list was empty. Successful placement and refusal cards were visually verified. Minor issue: the refused no-plan request still says “Gemma is preparing the plan” in the collapsible plan row. Frozen v15 is unchanged; status-text polish remains future work. |
+
+The export `evidence/v15-object-sequence.json` remains local ignored evidence. These successful runs do not complete the broader simulation; the [social milestone](SOCIAL_PLAN.md) remains a future two-character plan.
+
+## September 25, 2026 — frozen v14
+
+| Check | Observed result |
+| --- | --- |
+| Offline regression and context checks. | **208/208 tests passed.** Context development also passed 48 captured/physical-stage cases with the actual tokenizer while retaining the full objective, ordered plan and all object names/positions. |
+| Same long tulip story, cycle 173. | **Failed after five successful engine jobs and four verified steps.** Approach, pickup, carry, throw at `2 m/s`, and approach to the actual landed flower all physically completed. Gemma falsely rejected the final approach at roughly 1.5 m object distance despite arrival at its chosen safe endpoint. The verbose rejection then overflowed Laya's available context budget. The remaining pickup/placement did not complete. |
+
+This failure motivated v15's exact 0.18 m endpoint criterion, recorded arrival/destination, immutable object-at-completion evidence and compact retry status only for matching successful current-step evidence. The complete successful rerun is recorded above; the v14 failure remains part of the history.
+
+## September 25, 2026 — frozen v13
+
+Build `2026-09-25.13` replayed the original pre-v12 save, including its old reclining height, after preserving the v12 failure diagnostic.
+
+| Check | Observed result |
+| --- | --- |
+| Full offline regression suite. | **202/202 passed.** |
+| Original-save replay: “Walk to (6,8), then walk to (6,2), then rest on the Garden daybed.” | **Clean pass: 4/4 steps and four actual outcomes completed, cycle 170, 40.55 simulation seconds. Zero navigation recoveries or replans.** |
+| Orange Tulip stability. | Stayed at approximately `(2.28953, 0.23981, 2.49450)`; no launch during the original-save replay. |
+| Mattress support, orientation and recovery. | Rest center approximately `y=0.87`, heading `π`, above the actual mattress and facing the pillow; screenshot verified. Bed rest added 27 energy points, reaching 90.32; comfort capped at 100. |
+| “Pick up the Orange Tulip (item-1), carry it to (-2,3), gently throw it toward (0,3) at 2 m/s, go retrieve it, and place it at (2,3).” | **Failed before any action, cycle 171.** Gemma generated eight plan steps. Laya decision preparation stopped with: “Objective and essential decision facts exceed checkpoint capacity; no facts were silently truncated”. The long object story did not pass. |
+
+The tested restore/support correction passed its reproduction. v14 addressed the initial context capacity and throw/retrieval guidance but exposed a false approach audit; v15 subsequently completed the full object sequence. The future [social milestone](SOCIAL_PLAN.md) is not complete.
+
+## September 25, 2026 — frozen v12, mixed result
+
+Build `2026-09-25.12` produced a mixed result. Passing regressions and completed goals did not prevent the restoration defect below.
+
+| Check | Observed result |
+| --- | --- |
+| Full offline regression suite. | **196/196 passed.** This does not establish stable restored physics in the observed live scene. |
+| “Walk to (6,8), then walk to (6,2), then rest on the Garden daybed.” | **Completed 4/4 steps, cycle 170, 68.10 simulation seconds**, but required **two navigation recoveries** while leaving a restored bed. Bed rest added 27 energy points. This was not an uninterrupted clean run. |
+| Subsequent three-waypoint route around the bed. | **Verified.** Ground destination dots matched the right-panel markers. |
+| Rest orientation. | Pillow-facing bed rest was visually verified. This confirms the checked orientation, not the absence of support or restore defects. |
+| Existing Orange Tulip after resume. | **Failed physical stability check.** The tulip launched; replaying the exact backup reproduced the restored limb rig destabilizing and striking it. |
+
+The diagnostic export `evidence/v12-navigation-playtest.json` and backup named `v12-after-navigation-diagnostic.json` remain local ignored evidence. This failure prompted v13's posture-aware rig restoration, immediate collider-support queries and mattress selection; the independent replay result is recorded above.
+
+The [first social milestone](SOCIAL_PLAN.md) remains future continuation work after single-character stability; companions are not enabled by this release.
 
 ## September 25, 2026 — frozen v11
 
-Build `2026-09-25.11` is live. Physical capsule checks reject occupied walking destinations at planning and commit time, furniture approaches select clear ground, and runtime route failures allow two bounded remaining-plan repairs while retaining verified steps and the persisted repair budget.
+Build `2026-09-25.11` introduced physical capsule checks that reject occupied walking destinations at planning and commit time, clear furniture approaches, and two bounded remaining-plan repairs after route failures while retaining verified steps and the persisted repair budget.
 
 | Check | Current evidence |
 | --- | --- |
 | Full offline regression suite. | **176/176 passed.** Includes destination occupancy, clear furniture approach, posture and navigation-recovery coverage. |
 | “Wash at garden shower, then sit on park bench, then rest on garden daybed.” | **Completed, all 6/6 steps verified, cycle 168, 88.17 simulation seconds.** Gemma planned approach/wash → approach/sit → approach/rest. Each use lasted six seconds. Wash changed hygiene `79.90875 → 100` (clamped) and comfort `+6`. Sitting changed energy `+3`, comfort `+24`. Bed rest changed energy `+27`, with comfort capped at `100`. |
 | Autonomous activity after user completion. | **Completed.** Laya chose rest at the Garden daybed; Gemma supplied approach/use steps. Bed rest succeeded, changing energy approximately `40.58 → 67.58`. |
-| Browser and visual review. | **Zero browser-console errors.** The robot remained cohesive while reclining and the recorded need-delta card was visible. Known visual issue: arrival heading is retained, so it lies across the bed instead of along the pillow axis. Bed alignment is a v12 follow-up, not a completed v11 fix. |
+| Browser and visual review. | **Zero browser-console errors.** The robot remained cohesive while reclining and the recorded need-delta card was visible. Known visual issue: arrival heading is retained, so it lies across the bed instead of along the pillow axis. Bed-pillow and bench-front orientation are v12 follow-ups, not completed v11 fixes. |
 
 These are successful runs of the tested requests; they do not establish general pathfinding or complete social gameplay. The game still runs one character.
 
@@ -67,4 +121,4 @@ The left-fence printer, keyboard/screen, continuous lawn, neighborhood houses, p
 
 ## Remaining verification
 
-Align bed-rest orientation in the next release and complete the outstanding accommodation edge checks, then continue player-style runs for longer creation/use sequences, impossible physical requests, depleted resources, save/restore continuity, repeated inspections without memory flooding, and recovery after rejected model output. Review robot walking, carrying, resting, eating, throwing and typing, plus narrow/desktop layouts, object menus and matching movement colors. The v9 mobile pass is a baseline; repeat it after layout changes. Judge physical effects and recorded evidence, not completion text alone.
+Fix the refused request's misleading empty-plan status, then continue accommodation edge checks, longer creation/use sequences, resource depletion, save/restore, memory consolidation and recovery after rejected model output. Review remaining poses and viewport sizes; the v9 mobile pass is a baseline. The long tulip sequence and bench refusal passed their recorded v15 runs, but broader single-character testing and future social work remain. Judge physical effects and recorded evidence, not completion text alone.

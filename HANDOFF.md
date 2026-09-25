@@ -1,14 +1,28 @@
 # Development handoff
 
-Checkpoint: September 25, 2026, **frozen v11**, build `2026-09-25.11`. Continue the user's broader Sims-like goal by making the single character reliable and expressive before expanding the cast. v11 is live with passing offline regressions and a successful complete wash/sit/bed-rest request. The broader social simulation remains unfinished.
+Current live release: September 25, 2026, **frozen v15**, build `2026-09-25.15`. Continue the user's broader Sims-like goal by making the single character reliable and expressive before expanding the cast. The long tulip story now passes every physical action and audit, and an impossible eating request is rejected immediately. Remaining UI/memory polish and broader edge tests are listed below. No companions are enabled; the social simulation remains unfinished.
 
 ## Release and evidence
 
-- `outputs/maker/start.ps1` defaults to `releases/v11`. Frozen application directories must not be overwritten.
+- `outputs/maker/start.ps1` defaults to `releases/v15`. Frozen application directories must not be overwritten. The last reported pushed checkpoint is v11 commit `424c7bc`, pending the next root-owned commit/push.
+- **213/213 offline tests passed for v15.** Live cycle 174 completed the exact long tulip request: pickup → carry to `(-2,3)` → throw toward `(0,3)` at `2 m/s` → approach the actual landed item → pickup → carry to `(2,3)` → place. All **7/7 engine actions and seven Gemma audits passed**, with no `not_verified`, error or navigation recovery. Initial approach was unnecessary because the object was already nearby.
+- First plan proposal was at simulation time `4700.6667`, first physical completion at `4703.1`, final result at `4747.8667`: 47.20 simulation seconds from proposal to completion. Final immutable release evidence was `(2, 0.6825, 3)`, `carried:false`, `carrier:null`; the object subsequently settled near `(2.0062, 0.5614, 2.9574)`.
+- Cycle 175, “Eat the park bench”, produced one unsupported activity plan, a precise wood/`edible:false` explanation and zero actions. It stopped immediately rather than retrying three times.
+- The v15 browser console error list was empty; successful placement and refusal cards were visible. Reflections over cycles 174/175 consolidated 12 memories to eight, with some duplicates still present. The refused request's empty plan row misleadingly retains “Gemma is preparing the plan”; fix this in working source after the checkpoint.
+- Local export `outputs/maker/evidence/v15-object-sequence.json` remains ignored. Preserve it as evidence without committing private diagnostics.
+- **208/208 offline tests passed for v14**, but its live cycle 173 failed after five completed engine jobs and four verified steps. Gemma rejected the successful approach to the landed flower at roughly 1.5 m object distance despite arrival at the selected safe endpoint. Verbose verifier error prose then overflowed Laya's remaining context budget. The story did not complete in v14.
+- **202/202 offline tests passed for v13.** Replay of the original pre-v12 save with its old reclining height completed the same cycle-170 walk/walk/rest request, 4/4 steps in 40.55 simulation seconds, with zero navigation recoveries or replans. All four actual action outcomes completed.
+- Orange Tulip stayed at `(2.28953, 0.23981, 2.49450)` without launching. The rest center was approximately `y=0.87`, heading `π`, above the actual mattress and facing the pillow; the screenshot was verified. Rest added 27 energy points to reach 90.32, with comfort capped at 100.
+- The second v13 run, cycle 171, requested pickup of Orange Tulip `item-1`, carrying to `(-2,3)`, a gentle throw toward `(0,3)` at `2 m/s`, retrieval, and placement at `(2,3)`. Gemma generated eight steps, but **no action executed**: “Objective and essential decision facts exceed checkpoint capacity; no facts were silently truncated”. This is a failed long-request playtest, separate from the successful restore replay.
+- v14 addressed the initial capacity/throw-guidance problem, but exposed the false approach audit above. v15's full seven-action run is the successful follow-up; preserve both failures as historical evidence.
+- **196/196 offline tests passed for v12.** Live cycle 170 completed “Walk to (6,8), then walk to (6,2), then rest on the Garden daybed.” All 4/4 steps completed in 68.10 simulation seconds, but two navigation recoveries were required while leaving a restored bed. Bed rest restored 27 energy points.
+- A subsequent three-waypoint route around the bed verified. Ground destination dots matched panel markers, and the pillow-facing rest pose was checked visually.
+- After resume, the existing Orange Tulip launched. Replaying the exact backup reproduced an unstable restored limb rig striking it. Do not report v12 as a clean pass or infer that completion text proves restoration physics is sound.
+- Local reproduction evidence remains ignored: export `outputs/maker/evidence/v12-navigation-playtest.json` and backup named `v12-after-navigation-diagnostic.json`. Preserve these local inputs for replay; do not add private saves or exports to Git.
 - **176/176 offline tests passed for v11.** Live cycle 168 completed “Wash at garden shower, then sit on park bench, then rest on garden daybed.” All six approach/use steps were verified in 88.17 simulation seconds.
 - Recorded six-second effects: wash hygiene `79.90875 → 100` and comfort `+6`; sitting energy `+3` and comfort `+24`; bed rest energy `+27` and comfort capped at `100`.
 - After that user request, Laya selected autonomous rest at the daybed, Gemma planned its approach/use, and the action succeeded with energy `40.58 → 67.58`.
-- The v11 browser console had zero errors. The robot remained visually cohesive while reclining, and the recorded need-delta card was visible. Its heading still follows arrival direction, making it lie across the bed rather than along the pillow axis; this is the next visual fix, planned for v12.
+- The v11 browser console had zero errors. The robot remained visually cohesive while reclining, and the recorded need-delta card was visible. Its arrival heading made it lie across the bed; the pillow-facing orientation was subsequently checked in v12.
 - **162/162 offline tests passed for v10.** Bed and bench offline checks pass; this is not proof of complete live model-driven use.
 - The v10 live wash → sit → bed-rest request verified shower approach and a six-second wash, restoring hygiene from approximately 77 to 100. The next planned move targeted the bench center `(2, -5)`, inside its collision shape, and failed with `planIndex=2`. That full request did not complete, and its live bench/bed interactions were not reached.
 - The offline robot pose check covered ten activities over 1,051 sampled frames. It does not substitute for live physical interaction and visual review.
@@ -27,6 +41,25 @@ One robot character, Butterbot; six decaying needs; finite food; user and autono
 Objects expose validated mass, size and capabilities. Timed pickup/drop/throw/push/give/eat enforce range, ownership, lifting/force limits and food depletion. Generated food must be validated as edible food; names alone confer no capability. Prop mass now permits light objects down to 0.02 kg. Printer plans retain creation references so later steps act on the actual printed object.
 
 The UI includes independent smooth activity/memory feeds with an initially equal adjustable split, semantic card colors, persistent failed-request status/retry, pause/resume, a small-screen collapsible panel, click-object information and action requests, colored destinations matching movement entries, and stale/consumed-object cleanup. The printer sits against the left fence with a keyboard, screen and muted-by-choice accepted-prompt double bell. The continuous lawn, neighborhood buildings and passing cars are scenery.
+
+## Added in v14 and v15
+
+- Compact decision contexts preserve the full objective, ordered plan, current step and every world-object name/position. The v14 context work passed 48 captured/physical-stage cases using the actual tokenizer; the later full suites were 208 tests for v14 and 213 for v15. Full raw context remains available in diagnostics.
+- [execution-evidence.mjs](outputs/maker/execution-evidence.mjs) supplies the engine's exact completion criteria and a cloned action-time record to Gemma. Navigation shares a 0.18 m endpoint tolerance. Approach means reaching the chosen clear point beside the target, not an invented stricter distance to its center.
+- Approach jobs/outcomes retain the actual selected navigation destination instead of unused `(0,0)` parameters; completed routes are marked arrived. `objectAtCompletion` captures immutable ownership and position, including the placement release point. Later settling does not undo a valid recorded release.
+- Verifier prose and inference errors are separated from authoritative engine blockers. Compact retry status is used only when successful evidence matches the current step and cycle; full explanations remain recorded. This does not hide a failed action or convert a rejected audit into success.
+- Coverage includes [verification-contract.test.mjs](outputs/maker/tests/verification-contract.test.mjs) and [decision-context-capacity.test.mjs](outputs/maker/tests/decision-context-capacity.test.mjs). Live success above is separate from the offline suite.
+
+## Fixed in v13; first live replay passed
+
+- Limb rigs restore in the saved posture, collider-support queries reflect current state immediately, and bed support selects the actual mattress rather than the wooden frame. The original saved-scene replay passed without the v12 launch or navigation recoveries.
+- The old failing v12 diagnostic was preserved before restoring the original test scene. Keep the failure evidence and compare actual physical outcomes when extending regression coverage.
+
+## Added in v12
+
+- Bed rest can align toward the pillow rather than retain its approach heading. The v12 screenshot verifies that orientation, while the live route still needed recovery when leaving a restored bed.
+- Reflection receives the full compact memory store (`id`, `kind`, `text` for every entry), not only three recalled texts. Recalled IDs remain relevance hints. Generated memories are kept out of the separately labeled authoritative-facts section.
+- Gemma is instructed to revise/forget redundant paraphrases using exact IDs, preserving distinct facts, quantities, negation and subjective kinds. The memory engine retains exact-only normalization; it does not automatically delete semantic near-duplicates. Focused coverage is in [reflection-memory.test.mjs](outputs/maker/tests/reflection-memory.test.mjs).
 
 ## Added in v11
 
@@ -71,12 +104,12 @@ Scoped earlier implementation notes: [object capabilities](outputs/maker/HANDOFF
 
 ## Remaining work
 
-1. **Align bed rest in v12.** Set reclining orientation from the bed/pillow axis rather than the robot's arrival direction, preserving the successful physical support and need recovery. Verify entry, rest, exit and subsequent walking without changing frozen v11.
+1. **Polish the refused-plan status.** A blocked request with no plan still displays “Gemma is preparing the plan” in the collapsible row. Show a truthful blocked/refused state. Keep frozen v15 unchanged and rebuild a future release after source validation.
 2. **Complete accommodation edge checks.** Check pause/cancellation, return to normal movement, starter installation, finite-food depletion/save/restore and reset semantics. v11's browser-console check passed; the full set of interaction poses and edge cases still needs review.
-3. **Broader single-character playtests.** Exercise longer print/use plans, impossible requests, interrupted work, resource depletion, duplicate-memory retention, save/restore, and recovery after real model failures. Check outcomes rather than completion prose.
+3. **Broader single-character playtests.** Exercise longer print/use plans, impossible requests, interrupted work, resource depletion, duplicate-memory retention, save/restore, and recovery after real model failures. Memory consolidation worked in the recorded v15 run but is not perfected; duplicates remain. Check outcomes rather than completion prose.
 4. **Animation and layout review.** Review robot walking, carrying, throwing, eating, resting and typing from multiple angles; compare narrow and desktop layouts, object menus, destination colors and scrolling. One successful printer screenshot is not exhaustive visual QA.
 5. **Portability.** Replace development-machine fallbacks, document a compatible Laya/Python installation and verify clean-clone setup. Model environments and weights are not bundled.
-6. **Expand the cast only after the single-character loop holds up.** Add distinct personalities, social goals, gifting and grounded conversations. The social bar and underlying multi-actor plumbing do not mean social gameplay is enabled. A full sleep cycle also remains unimplemented.
+6. **Expand the cast only after the single-character loop holds up.** Follow [SOCIAL_PLAN.md](outputs/maker/SOCIAL_PLAN.md) for two visible independent robots, accepted paired conversations, actual participation and exactly-once mutual effects. It is a plan, not completed gameplay. The social bar and existing multi-actor plumbing do not mean companions are enabled. A full sleep cycle also remains unimplemented.
 
 ## Continue safely
 

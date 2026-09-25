@@ -23,4 +23,6 @@ test('remaining action planning keeps exact requested coordinates next to the co
   assert.match(prompt,/Exact requested coordinate pairs.*\[\{"x":-4,"z":5\}\]/);
   assert.match(prompt,/Latest correction: Plan omitted requested coordinates \(-4, 5\)/);
   assert.match(prompt,/Never snap an explicit coordinate to a named landmark/);
+  assert.match(prompt,/Throw\/push coordinates specify an aim direction, not a guaranteed landing position/);
+  assert.match(prompt,/retrieve a thrown or pushed item, use approach\(target id\).*actual current position/);
 });

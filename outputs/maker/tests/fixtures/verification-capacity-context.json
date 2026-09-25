@@ -1,0 +1,219 @@
+{
+  "objective": "Pick up the Orange Tulip (item-1), carry it to (-2,3), gently throw it toward (0,3) at 2 m/s, go retrieve it, and place it at (2,3).",
+  "planSteps": [
+    {
+      "action": "approach",
+      "target": "item-1",
+      "recipient": "",
+      "x": 0,
+      "z": 0,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Approach the Orange Tulip"
+    },
+    {
+      "action": "pick_up",
+      "target": "item-1",
+      "recipient": "",
+      "x": 0,
+      "z": 0,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Pick up the Orange Tulip"
+    },
+    {
+      "action": "move",
+      "target": "",
+      "recipient": "",
+      "x": -2,
+      "z": 3,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 0,
+      "label": "Move to (-2,3) to prepare for throw"
+    },
+    {
+      "action": "throw",
+      "target": "item-1",
+      "recipient": "",
+      "x": 0,
+      "z": 3,
+      "speed": 2,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Throw the Orange Tulip toward (0,3) at 2 m/s"
+    },
+    {
+      "action": "approach",
+      "target": "item-1",
+      "recipient": "",
+      "x": 0,
+      "z": 0,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Approach the thrown Orange Tulip"
+    },
+    {
+      "action": "pick_up",
+      "target": "item-1",
+      "recipient": "",
+      "x": 0,
+      "z": 0,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Retrieve the Orange Tulip"
+    },
+    {
+      "action": "move",
+      "target": "",
+      "recipient": "",
+      "x": 2,
+      "z": 3,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 0,
+      "label": "Move to (2,3) to place the tulip"
+    },
+    {
+      "action": "place",
+      "target": "item-1",
+      "recipient": "",
+      "x": 2,
+      "z": 3,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Place the Orange Tulip at (2,3)"
+    }
+  ],
+  "planIndex": 4,
+  "cycle": 173,
+  "goalSource": "user",
+  "needs": {
+    "energy": 83.61319999985862,
+    "fun": 62.31384999992318,
+    "hunger": 42.53049999997644,
+    "hygiene": 84.36625000001422,
+    "social": 37.610916666606656,
+    "comfort": 94.3749437499909
+  },
+  "pendingStepEvidence": {
+    "stepIndex": 4,
+    "step": {
+      "action": "approach",
+      "target": "item-1",
+      "recipient": "",
+      "x": 0,
+      "z": 0,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Approach the thrown Orange Tulip"
+    },
+    "job": {
+      "action": "approach",
+      "target": "item-1",
+      "recipient": "",
+      "x": 0,
+      "z": 0,
+      "speed": 0,
+      "strength": 0,
+      "use": "",
+      "seconds": 2,
+      "label": "Approach the thrown Orange Tulip",
+      "advance": true,
+      "start": 4681.050000016029,
+      "startPosition": {
+        "x": -1.9291976690292358,
+        "y": 1.1650969982147217,
+        "z": 3.003926992416382
+      },
+      "lastDistance": 0.16474209117471894,
+      "stuck": 0.05,
+      "progressPosition": {
+        "x": -1.5531198978424072,
+        "z": 3.049499750137329
+      },
+      "navigationDestination": {
+        "x": 0,
+        "z": 0
+      }
+    },
+    "outcome": "Reached (-1.50, 3.06)",
+    "recordId": "actor-record-1358",
+    "completedAt": 4681.500000016023
+  },
+  "verificationAttempts": 3,
+  "positions": {
+    "actor": {
+      "x": -1.4155346155166626,
+      "y": 1.1650969982147217,
+      "z": 3.0648066997528076
+    },
+    "item-1": {
+      "x": 0.0033081844449043274,
+      "y": 0.2484554946422577,
+      "z": 3.237736463546753
+    },
+    "home-bed": {
+      "x": 6,
+      "y": 0.5550000071525574,
+      "z": 5
+    },
+    "garden-shower": {
+      "x": 7,
+      "y": 1.3774999380111694,
+      "z": -3
+    },
+    "park-bench": {
+      "x": 2,
+      "y": 0.6299999952316284,
+      "z": -5
+    },
+    "snack-bowl": {
+      "x": 2.6758711338043213,
+      "y": 0.15094341337680817,
+      "z": 1.0734528303146362
+    }
+  },
+  "verification": {
+    "id": "actor-record-1360",
+    "type": "step_verification",
+    "cycle": 173,
+    "step": 5,
+    "status": "not_verified",
+    "result": {
+      "complete": false,
+      "explanation": "The current step is 'approach' for 'item-1'. The engine outcome states 'Reached (-1.50, 3.06)', but the actual position of 'item-1' is (0.0033, 0.2484, 3.2377). The distance between the actor and the item is approximately 1.5 meters, which is not within the required proximity for a successful 'approach' action to be considered complete."
+    },
+    "evidence": {
+      "completion": {
+        "recordId": "actor-record-1358"
+      }
+    }
+  },
+  "outcome": {
+    "id": "actor-record-1358",
+    "type": "action_outcome",
+    "cycle": 173,
+    "status": "completed",
+    "outcome": "Reached (-1.50, 3.06)"
+  },
+  "capacityErrors": [
+    "Objective and essential decision facts exceed checkpoint capacity; no facts were silently truncated (smallest state 444 tokens; limit 362; header 58)",
+    "Objective and essential decision facts exceed checkpoint capacity; no facts were silently truncated (smallest state 376 tokens; limit 362; header 58)"
+  ]
+}

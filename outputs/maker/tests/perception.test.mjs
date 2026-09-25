@@ -39,8 +39,10 @@ test('every known object name and xyz appear in all canonical decision variants 
       const snapshot=context.snapshot.objects.find(x=>x.id===object.id),fact=facts.objects.find(x=>x.id===object.id);
       assert.deepEqual(snapshot.position,object.position);assert.equal(fact.description,object.description);
       for(const variant of context.variants){
-        assert.ok(variant.text.includes(object.name));
-        assert.ok(variant.text.includes('('+[object.position.x,object.position.y,object.position.z].map(n=>n.toFixed(1)).join(',')+')'));
+        const identity=object.id+' '+object.name+' (',start=variant.text.indexOf(identity);assert.ok(start>=0,'Object ID/name missing: '+object.id);
+        const coordinates=variant.text.slice(start+identity.length).split(')')[0].split(',').map(Number);
+        assert.equal(coordinates.length,3);assert.ok(coordinates.every(Number.isFinite));
+        assert.deepEqual(coordinates,[object.position.x,object.position.y,object.position.z].map(n=>Number(n.toFixed(1))),'Coordinates for '+object.id+' must retain 0.1m precision');
       }
     }
   }finally{g.physics.dispose();}
