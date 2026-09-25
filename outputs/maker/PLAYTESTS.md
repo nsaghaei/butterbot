@@ -1,10 +1,51 @@
 # Gameplay verification
 
-These are observations from the actual local game using Gemma and Laya. Offline regressions are separate: **v21 passed 315/315; v20 308/308; v19 304/304; v18 275/275; v17 266/266; v16 252/252; v15 213/213; v14 208/208; v13 202/202; v12 196/196; v11 176/176; v10 162/162; v9 147/147**. Saved scenes, prompts and raw diagnostic exports stay outside Git.
+These are observations from the actual local game using Gemma and Laya. Offline regressions are separate: **v23 passed 340/340; v22 329/329; v21 315/315; v20 308/308; v19 304/304; v18 275/275; v17 266/266; v16 252/252; v15 213/213; v14 208/208; v13 202/202; v12 196/196; v11 176/176; v10 162/162; v9 147/147**. Saved scenes, prompts and raw diagnostic exports stay outside Git.
+
+## September 25, 2026 — frozen v23
+
+Build `2026-09-25.23` is the current live release. **340/340 offline tests passed in 10.035 seconds.** Prospective inventory validation and prominent current-hands facts help Gemma plan prerequisites before execution; runtime eating checks require the intended food to be held. The engine does not insert a scripted drop.
+
+| Check | Observed result |
+| --- | --- |
+| Actual UI Retry of Pip's preserved “Eat one serving from the Bowl of oranges.” | **Passed, cycle 15, all 3/3 steps verified.** First Gemma plan 98 took **4.425 seconds** and correctly proposed **drop → approach → eat**. No rejected plan or repair occurred in this retry cycle. |
+| Drop and approach. | Laya 99 selected drop; outcome 100 at **5062.35**, audit 102 at **5066.6333**. Approach choice 103, outcome 104 at **5068.05**, audit 106 at **5073.30**. The tulip was safely on the ground before eating. |
+| Mid-eating pause and physical check. | Eating choice 107 started at **5074.85**. Pause at progress **0.4722** (**1.4167/3 seconds**) confirmed bowl carrier **Pip**, `foodHeld:true`, `effectApplied:false`; tulip `carrier:null` on the ground. Screenshot showed the actual bowl at the robot's mouth and flower on the floor. |
+| UI Resume and consumption. | Eat outcome 108 at **5077.8667** consumed **exactly one serving, bowl 2 → 1**, after **3.0167 seconds**. Hunger **20.6268 → 0**, energy **+2**, comfort **+3**. Audit 110 verified **3/3** at **5083.60**. |
+| Context and reflection. | All six actual Laya contexts fit the 362-token state allowance: **350, 345, 305, 327, 305, 330**. Reflection 111 at **5087.4833** described the orange as sweet/refreshing after freeing hands and setting the tulip aside; speech described it as delicious. |
+| Saved meal endpoint and browser. | Saved/paused with Pip cycle 15 complete, one food serving, both characters' hands free and the tulip on the ground still owned by Pip. Butterbot self-cycle 186 was going to/resting on the bed. UI confirmed Pip, the same snack goal, completed plan and Resume (paused). Browser console had **zero captured errors**. |
+
+Ignored evidence: `evidence/v23-mid-eat.json` and `evidence/v23-verified-hands-meal.json`. v23 started with two bowl servings because Butterbot had independently eaten two meals during v22; Pip's failed v22 request consumed none. This live first-plan success verifies the specific snack case, not all plans, live repair loops, invalidation paths or printing. The measured approximately 29.7 cm next-frame gift shift remains, with no new visual-blend fix.
+
+### Additional v23 printed-gift test — failed
+
+| Check | Observed result |
+| --- | --- |
+| Butterbot: “Print a small edible orange, pick it up, and give it to Pip.” | **Failed, cycle 187.** Gemma planned print small edible orange → pickup `$step1` → give `$step1` to Pip. Printer typing and choices were observed. The form question first refreshed, then choices were oblate, small, **polymer**, smooth. |
+| Construction and physical effects. | **All three attempts rejected:** “Only food material can be tagged edible; plastic, wood and metal cannot be eaten”. **No object materialized, no pickup and no gift.** Correct future-object references did not establish successful construction. |
+| Missing constraint. | The creation label said edible, but later pickup/give steps supplied no eat-capability requirement. The creation-plan schema lacked an explicit edible flag and material selection allowed polymer. v24's explicit model-selected capability correction is in progress; it is not shipped in v23. |
+| Reflection after the failure. | **Failed:** “Memory edit referenced an unknown entry”. This remains unresolved; no successful memory change is claimed. |
+| Final checkpoint state. | Saved/paused, selected Butterbot had moved to self-cycle **188, action_plan**. The failed last user request and cycle-187 records were retained. One food serving and the tulip on the ground remained. |
+
+Ignored export `evidence/v23-edible-material-failure.json` was captured after Butterbot entered self-cycle 188. Preserve the original failed-request and cycle-187 evidence. The earlier meal pass remains valid, but v23 is a mixed gameplay result. The full printed edible gift requires a new live replay after the proposed v24 fix; no forced eat step or keyword-based edibility substitution is part of that plan.
+
+## September 25, 2026 — frozen v22
+
+Frozen/live build `2026-09-25.22` passed **329/329 offline tests in 9.707 seconds**. Eating requires the actual food to be held and blocks unrelated occupied hands; invalidated food/carry state cannot produce consumption. Its runtime check prevented incorrect consumption, but the missing-drop plan still executed an approach before being blocked. The subsequent v23 planning correction and live retry are recorded above.
+
+| Check | Observed result |
+| --- | --- |
+| Pip: “Eat one serving from the Bowl of oranges.” | **Failed honestly, cycle 13.** Gemma planned approach/eat without dropping the held Orange Tulip. Pip walked, then execution blocked: “Hands are occupied by Orange Tulip; explicitly drop or place it before eating Bowl of oranges”. **Pip ate zero servings and still held the tulip.** |
+| Separate Butterbot self-meals before v23 restart. | **Two one-serving meals completed and verified:** cycle **184 at 5023.733**, bowl **4 → 3**; cycle **185 at 5049.35**, bowl **3 → 2**. Neither is Pip consumption or completion of Pip's failed request. |
+| Saved continuation. | Game saved/paused. Pip later entered self-observation cycle 14; the failed user request remained preserved. Ignored evidence: `evidence/v22-occupied-hands-plan-failure.json`. |
+| Exact-tokenizer drop/approach/eat audit. | **Offline pass:** six decision contexts used **348, 341, 301, 326, 303 and 328 tokens**, all within the 362-token state allowance, without fact truncation. |
+| Critical drop/print/eat(`$step2`) tokenizer audit. | **Offline pass:** start contexts **317 and 278**, post-print context including four design values **346**, eat **349**, completion **326** tokens; all within 362. This does **not** establish a live print/eat run. |
+
+v23 subsequently added prospective hand-state validation before action and a prominent current-hands planning frame. It returns specific corrections to Gemma within the bounded model-generated repair loop; no scripted drop is inserted. The live retry above succeeded on its first plan, so that run itself does not demonstrate a repair attempt. The broader goal remains unfinished.
 
 ## September 25, 2026 — frozen v21
 
-Build `2026-09-25.21` is the current live release. **315/315 offline tests passed in 9.443 seconds.** Reflection now checks current lifecycle/completion evidence after inference and prioritizes the current goal, verified steps and ownership over historical failures and inspections. The gift UI removes an exact duplicate proof sentence.
+Historical build `2026-09-25.21` verified the reflection checks below. **315/315 offline tests passed in 9.443 seconds.** Reflection now checks current lifecycle/completion evidence after inference and prioritizes the current goal, verified steps and ownership over historical failures and inspections. The gift UI removes an exact duplicate proof sentence.
 
 | Check | Observed result |
 | --- | --- |
@@ -199,4 +240,4 @@ The left-fence printer, keyboard/screen, continuous lawn, neighborhood houses, p
 
 ## Remaining verification
 
-Broaden reflection/memory checks after v21 passed the exact stale-gift replay and separate live request; retain v20's narration failure as a regression case. Fix the confirmed eating/held-flower bug and measured next-frame gift shift; v22 eating work is in progress, not shipped in v21. Improve two-turn conversation endings and redundant gift cards. Broaden busy/occupied recipient, decline, reassignment before/after contact, critical-need, separation, timeout, reset/reload and provider-failure checks. Preserve unrelated user work and apply ownership/effects once. Continue accommodation edges, finite-food depletion, longer creation/use plans, memory consolidation, remaining poses/viewports and clean-machine setup. A full sleep cycle and relationships remain unfinished. The recorded mobile and pause/resume checks are successful baselines, not exhaustive coverage; distinguish generated prose from physical evidence.
+Broaden reflection/memory checks after v21 passed the exact stale-gift replay and separate live request; retain v20's narration failure as a regression case. Broaden food/carry invalidation and occupied-hands planning checks after the specific v23 eating success. The measured next-frame gift shift remains unfixed. Improve two-turn conversation endings and redundant gift cards. Broaden busy/occupied recipient, decline, reassignment before/after contact, critical-need, separation, timeout, reset/reload and provider-failure checks. Preserve unrelated user work and apply ownership/effects once. Continue accommodation edges, finite-food depletion, longer creation/use plans, memory consolidation, remaining poses/viewports and clean-machine setup. A full sleep cycle and relationships remain unfinished. The recorded mobile and pause/resume checks are successful baselines, not exhaustive coverage; distinguish generated prose from physical evidence.

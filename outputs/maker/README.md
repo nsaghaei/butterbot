@@ -1,6 +1,8 @@
 # Maker Garden
 
-See the [repository overview](../../README.md), [development handoff](../../HANDOFF.md), and [actual playtests](PLAYTESTS.md). The launcher selects **v21**, build `2026-09-25.21`; **315/315 offline tests passed**. Real Gemma replayed the exact paused, completed v20 gift state in 5.472 seconds and correctly described the tulip in Pip’s hands, with a successful-exchange speech, new gift memory and chat suggestion. The live cycle-183 request “Reflect on the gift you just gave to Pip” also passed one think step and independent audit, with one new memory and no error/retry. Robot bodies and gift-card cleanup were visually checked; the browser console had zero captured errors.
+See the [repository overview](../../README.md), [development handoff](../../HANDOFF.md), and [actual playtests](PLAYTESTS.md). The launcher selects **v23**, build `2026-09-25.23`; **340/340 offline tests passed**. Retrying Pip’s snack request produced the correct first Gemma plan, drop → approach → eat, and all 3/3 steps verified. A mid-eating pause confirmed the actual bowl was held and the tulip was on the floor. UI Resume consumed exactly one serving, bowl **2 → 1**, with hunger **20.6268 → 0**, energy **+2** and comfort **+3**. No plan rejection/repair occurred in this retry cycle. The screenshot and completed paused UI were checked; browser console had zero captured errors.
+
+The subsequent **print edible orange → pickup → give to Pip request failed** in v23. Polymer was selected despite the edible label; all three construction attempts were rejected by food-material validation. No object, pickup or gift occurred. A later reflection failed with an unknown memory-entry reference. v24 is addressing explicit model-selected edible construction intent and capability checks; those fixes are not included here.
 
 Open **http://127.0.0.1:8790/** and select **Butterbot**, the ivory/teal robot, or **Pip**, the peach/coral robot, using the cast buttons. Give the selected character a goal in the bottom composer. Each has independent goals, personality, needs and private memory; both can speak visibly. Try “Go chat with Pip about your favorite things in this garden” while Butterbot is selected. Fresh scenes use two robots; saved casts are respected. An old default name Agent Wobble migrates to Butterbot; custom names remain intact.
 
@@ -12,7 +14,7 @@ Use **Pause/Resume** to control simulation time. Failed requests remain visible 
 
 ## Launch
 
-From this folder, run `powershell -NoProfile -File .\start.ps1`. The script starts frozen `releases/v21` in a hidden process with `saved/garden-v2.json` and this folder's `node_modules`. It refuses a duplicate server on port 8790. Logs go to the repository's `work/maker-v21.log` and `work/maker-v21-error.log`. It does not install software or manage model services.
+From this folder, run `powershell -NoProfile -File .\start.ps1`. The script starts frozen `releases/v23` in a hidden process with `saved/garden-v2.json` and this folder's `node_modules`. It refuses a duplicate server on port 8790. Logs go to the repository's `work/maker-v23.log` and `work/maker-v23-error.log`. It does not install software or manage model services.
 
 The existing development installation requires:
 
@@ -38,4 +40,4 @@ Paired gifts now reserve both participants and require recipient acceptance. An 
 
 Run `node --test tests/*.test.mjs` here for offline verification; exact-token tests need the configured tokenizer. Diagnostic files record individual attempts, including failures. Their presence alone does not mean a playtest passed.
 
-Known unfinished physical presentation: eating can raise a held flower while consuming an unheld bowl, and a gift can shift about 29.7 cm on the next frame at the tested spacing. Eating work is underway for v22; neither issue is claimed fixed in v21.
+Eating now requires actual held food, rejects unrelated occupied hands, and fails if the food is removed, stolen, released or cannot be carried. Prospective hand-state validation rejects invalid plans before action and asks Gemma for a specific correction; no scripted drop is inserted. v22 honestly blocked Pip’s missing-drop plan with zero consumption; v23’s user Retry passed on its first plan. Butterbot had separately eaten two servings in v22, leaving the two servings present at v23 start. Broader invalidation/cancellation tests continue. Gift motion still shifts about 29.7 cm on the next frame at the tested spacing and remains unfinished.

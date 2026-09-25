@@ -1,6 +1,6 @@
 # Debugging checkpoint
 
-Diagnostics are shipped in **frozen v21, build `2026-09-25.21`**. The full source suite passed **315/315 tests**. The recorded stale-gift reflection passed both its exact real-Gemma replay and a separate live think/audit request after adding lifecycle/evidence checks and a temporal reflection frame. [PLAYTESTS.md](PLAYTESTS.md) preserves the original v20 failure and distinguishes these successes from broader unfinished work.
+Diagnostics are shipped in **frozen v23, build `2026-09-25.23`**. The full source suite passed **340/340 tests**. Pip's preserved snack-request Retry passed its first generated drop/approach/eat plan, with actual bowl holding verified during a pause and exactly one serving consumed afterward. [PLAYTESTS.md](PLAYTESTS.md) preserves the honest v22 plan failure, the v21 reflection successes and earlier evidence separately.
 
 ## Available evidence
 
@@ -33,10 +33,28 @@ The separate player-UI request “Reflect on the gift you just gave to Pip”, c
 
 Reflection output is discarded when the current lifecycle/completion evidence changes during inference, before applying thoughts, suggestions or memory edits. Its input frame separates current goal, verified steps and actual ownership from historical failures/inspections. These safeguards and two real-model results verify this case, not universal semantic accuracy. No new mobile check is claimed beyond historical v20 coverage.
 
+## v22–v23 food and hand evidence
+
+v22 passed 329/329 offline tests but Pip cycle 13's snack plan omitted dropping the Orange Tulip. Runtime checks rejected eating after approach; Pip consumed **zero** and retained the tulip. Butterbot's separate verified meals were cycle 184 at 5023.733 (bowl 4 → 3) and cycle 185 at 5049.35 (3 → 2), both before v23 restarted. Keep actors/cycles separate when interpreting shared food depletion. Ignored failure export: `evidence/v22-occupied-hands-plan-failure.json`.
+
+v23's UI Retry started Pip cycle 15. Plan 98 generated drop → approach → eat in 4.425 seconds with no rejected plan/repair. Outcomes/audits 100/102 and 104/106 completed drop and approach. Eating began at 5074.85; at progress 0.4722 (1.4167/3 seconds), the pause snapshot showed bowl carrier Pip, `foodHeld:true`, `effectApplied:false`, and tulip `carrier:null` on the ground. The screenshot showed the actual bowl at the mouth and flower on the floor. Ignored mid-action evidence: `evidence/v23-mid-eat.json`.
+
+After UI Resume, eat outcome 108 at 5077.8667 consumed exactly one serving, bowl **2 → 1**, with hunger **20.6268 → 0**, energy **+2**, comfort **+3**, elapsed **3.0167 seconds**. Audit 110 verified 3/3 at 5083.60. Reflection 111 at 5087.4833 described the sweet/refreshing orange after freeing hands and setting the tulip aside. Actual Laya contexts were **350, 345, 305, 327, 305, 330**, all within 362 tokens. At the saved/paused meal endpoint, one serving remained, both hands were free and the ground tulip remained owned by Pip. UI and zero captured console errors were confirmed. Final meal export: `evidence/v23-verified-hands-meal.json`.
+
+The earlier exact-tokenizer audits of critical drop/print/eat(`$step2`) remained within 362 without fact truncation; those offline contexts are not a live printing success. v23's prospective hand validation can request a specific bounded Gemma correction before committing actions, but this live retry passed on its **first** generated plan. Do not describe it as a demonstrated live repair loop or universal planning reliability.
+
+## Additional v23 edible-construction failure
+
+Cycle 187 requested printing a small edible orange, picking it up and giving it to Pip. The plan correctly used `$step1`, but construction selected polymer after a refreshed form question and oblate/small/smooth choices. All three attempts failed food-material validation: “Only food material can be tagged edible; plastic, wood and metal cannot be eaten”. No object, pickup or gift occurred. The edible label was not represented as an explicit creation capability; later pickup/give dependencies did not impose an eat constraint.
+
+The ignored `evidence/v23-edible-material-failure.json` export was captured after selected Butterbot entered self-cycle 188 `action_plan`; examine the preserved failed user request and **cycle-187 records**, not only the current self goal. The game was saved/paused with one food serving and the ground tulip. A subsequent reflection failed with “Memory edit referenced an unknown entry”; its proposed edit must not be counted as accepted.
+
+v24 work will add model-selected explicit creation-plan edibility, constrain material to food when required and check constructed capabilities. This remains in progress, with no forced eat step, keyword-regex inference or live success claimed. Replay the complete printed-gift sequence after integration. v23's meal success does not cover this failed construction path.
+
 ## Remaining verification and limits
 
 - Broaden current-outcome reflection/memory checks and keep the v20 stale-narration example for regression. Continue gift decline, occupied/busy recipient, cancellation before/after contact, reset/reload and provider-failure checks in isolated worlds, then playtest the integrated single live server. Preserve saves and do not run competing model-driven servers.
-- Independently confirmed presentation defects remain: eating raises a held flower while consuming an unheld bowl, and a gift shifts about 29.7 cm on the next frame at the tested spacing. Eating work is underway for v22; the receive alias worsens the gift shift. Neither is fixed by v21 reflection/card changes.
+- Broaden food removal/theft/release, carry failure, unrelated occupied hands, pause/cancellation and depletion checks after the recorded v23 success. Gift rendering still shifts about 29.7 cm on the next frame at the tested spacing; the receive alias worsens it and v23 includes no visual-blend fix.
 - Improve noisy social lifecycle/model cards and consider a dedicated active-session section in the diagnostic report. Logs from both brains may contain copies of a shared session event; use session and record IDs when interpreting effects.
 - Broaden actual HTTP/shutdown checks on the Windows launch mechanism. Hard termination cannot guarantee a final flush; periodic capture and normal save flushing remain the fallback.
 - The report cannot recover model text never logged. Polling can miss transitions that occur entirely between captures; bounded recent records are not a complete journal. Later reconstructed context is not the original model input.

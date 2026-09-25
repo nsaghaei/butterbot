@@ -6,7 +6,11 @@ The current game is **Maker Garden**: Butterbot and Pip, a garden, and a printer
 
 ## Current checkpoint
 
-The launcher selects **frozen v21**, build `2026-09-25.21`. **315/315 offline tests passed.** An exact replay of the paused, completed v20 gift against real Gemma correctly reflected that the tulip was now in Pip’s hands, described the successful exchange, added a gift memory and suggested chatting. The replay took 5.472 seconds. The player-style live request “Reflect on the gift you just gave to Pip” then completed its think step and independent audit without error/retry, adding one memory. The robot bodies and gift-card cleanup were visually checked; browser console had zero captured errors.
+The launcher selects **frozen v23**, build `2026-09-25.23`. **340/340 offline tests passed.** Retrying Pip’s preserved snack request produced the correct first Gemma plan: drop the tulip → approach the orange bowl → eat. All three steps and independent audits completed. A mid-eating pause confirmed that Pip actually carried the bowl, the tulip was on the ground and no serving had yet been consumed. After UI Resume, exactly one serving was eaten, bowl **2 → 1**, with hunger **20.6268 → 0**, energy **+2** and comfort **+3**.
+
+The runtime now requires actual held food and rejects unrelated occupied hands or invalidated food/carry state. The planner checks prospective hand use before actions and returns specific corrections to Gemma; the engine does not insert a scripted drop. This first-plan live pass verifies the tested snack case, not every generated plan. The screenshot showed the bowl at Pip’s mouth and flower on the floor; the completed paused UI was confirmed and the browser console had zero captured errors.
+
+A second v23 request, “Print a small edible orange, pick it up, and give it to Pip”, **failed**. The plan correctly referenced the future printed object, but construction selected polymer and all three attempts were rejected because only food material can be edible. No object materialized and no pickup or gift occurred. Edibility was not carried into construction constraints when later steps required only pickup/give. A subsequent reflection also failed with “Memory edit referenced an unknown entry”. Explicit creation-capability planning and these remaining checks are v24 work, not shipped v23 fixes.
 
 Historical v20 gift verification passed with **87.93% accept / 12.07% decline**. Contact occurred at 1.628 m and changed owner/carrier from Butterbot to Pip; giving invented no social reward. Both give/receive arm poses were checked while paused. This fixes v19's failure when a recipient temporarily held food during its own eating action. The browser console had zero errors. The actual 375 × 812 gift-result view fit cast, needs, goal, cards, memory and composer without horizontal overflow.
 
@@ -107,10 +111,10 @@ From the repository root, run `node work/build-ui.cjs` to build the browser bund
 | `outputs/maker/tests/` | Includes capsule destinations, clear furniture approaches, posture transitions and bounded navigation recovery |
 | `outputs/maker/execution-evidence.mjs` | Recorded completion evidence and shared navigation tolerance for verification |
 | `outputs/maker/social-jobs.mjs` | Paired conversation/gift sessions, actual delivery/transfer, cancellation and effects |
-| `outputs/maker/releases/` | Immutable application checkpoints; launcher defaults to v21 |
+| `outputs/maker/releases/` | Immutable application checkpoints; launcher defaults to v23 |
 | `outputs/maker/HANDOFF-*.md` | Scoped implementation notes; some describe earlier checkpoints |
 | `work/` | Tracked UI build and release scripts |
 
 Dependencies are pinned in `pnpm-lock.yaml`; bundled Ammo files retain their attribution. Model downloads, installed dependencies, logs, saved scenes, and raw playtest evidence are excluded from Git.
 
-Next, continue reflection/memory validation and fix a confirmed eating defect: a held flower is raised to the mouth while an unheld food bowl is consumed. A v22 worker is addressing it; it is not fixed in v21. Gift rendering also still shifts the object about 29.7 cm on the next frame at the tested spacing. v21 removes exact duplicate gift-proof text; broader card cleanup, conversation endings, relationships, a full sleep cycle and verified clean-machine installation remain unfinished.
+Next, broaden food/hand invalidation, interrupted meal, reflection and memory checks. The held-flower eating case passed in v23 after v22 first blocked it honestly. Gift rendering still shifts the object about 29.7 cm on the next frame at the tested spacing; no new visual blend fixes it. Broader card cleanup, conversation endings, relationships, a full sleep cycle and verified clean-machine installation remain unfinished.
