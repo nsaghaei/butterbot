@@ -15,7 +15,9 @@ test('reflection exposes every editable memory text and ID beyond the three reca
   assert.deepEqual(promptJSON(request.prompt,'Complete editable memory store'),compact(memory));
   assert.deepEqual(promptJSON(request.prompt,'Recalled memory IDs (relevance only)'),memory.slice(0,3).map(m=>m.id));
   const engineFacts=promptJSON(request.prompt,'Authoritative engine facts (generated memories excluded)');
-  assert.equal('memory' in engineFacts.actor,false);assert.equal('memoryCatalog' in engineFacts.actor,false);assert.deepEqual(engineFacts.lastInspection,facts.lastInspection);assert.deepEqual(engineFacts.recentOutcomes,facts.recentOutcomes);
+  assert.equal('memory' in engineFacts.actor,false);assert.equal('memoryCatalog' in engineFacts.actor,false);assert.equal('lastInspection' in engineFacts,false);assert.equal('recentOutcomes' in engineFacts,false);
+  const history=promptJSON(request.prompt,'Historical evidence (not current state)');
+  assert.deepEqual(history.observations,[{kind:'lastInspection',observedAt:null,ageSeconds:null,data:facts.lastInspection}]);assert.deepEqual(history.unattributedOutcomes,facts.recentOutcomes);
   assert.doesNotMatch(request.prompt,/private memory bookkeeping|updatedAt|lastUsed/);
   assert.deepEqual({world,facts},before,'preparing reflection must not mutate memory, recall or engine facts');
   assert.equal(result.prompt,request.prompt);assert.equal(request.schema,reflectionSchema);assert.equal(request.maxTokens,600);assert.equal(request.schema.properties.memory.maxItems,3);

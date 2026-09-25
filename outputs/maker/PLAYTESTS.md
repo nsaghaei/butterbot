@@ -1,10 +1,25 @@
 # Gameplay verification
 
-These are observations from the actual local game using Gemma and Laya. Offline regressions are separate: **v20 passed 308/308; v19 304/304; v18 275/275; v17 266/266; v16 252/252; v15 213/213; v14 208/208; v13 202/202; v12 196/196; v11 176/176; v10 162/162; v9 147/147**. Saved scenes, prompts and raw diagnostic exports stay outside Git.
+These are observations from the actual local game using Gemma and Laya. Offline regressions are separate: **v21 passed 315/315; v20 308/308; v19 304/304; v18 275/275; v17 266/266; v16 252/252; v15 213/213; v14 208/208; v13 202/202; v12 196/196; v11 176/176; v10 162/162; v9 147/147**. Saved scenes, prompts and raw diagnostic exports stay outside Git.
+
+## September 25, 2026 — frozen v21
+
+Build `2026-09-25.21` is the current live release. **315/315 offline tests passed in 9.443 seconds.** Reflection now checks current lifecycle/completion evidence after inference and prioritizes the current goal, verified steps and ownership over historical failures and inspections. The gift UI removes an exact duplicate proof sentence.
+
+| Check | Observed result |
+| --- | --- |
+| Exact paused completed-gift cycle-182 replay against real Gemma/source v21. | **Passed in 5.472 seconds.** The generated thought began “The tulip is now safely in Pip’s hands!” Speech described the successful exchange, with a new gift memory and chat suggestion. This was actual generated output from the prior failing state. |
+| Player UI: “Reflect on the gift you just gave to Pip.” | **Passed, live cycle 183, 1/1 think step verified.** Gemma proposed the step in record 1465; Laya selected it in 1466. Reflection 1467 was accepted at **4990.7333**, generated in **4.744 seconds**, and described Pip cradling the tulip and the completed exchange. |
+| Memory and independent audit. | One remembered experience increased the memory count **6 → 7**. Action outcome 1468 and independent Gemma audit 1470 completed at **4994.2333**; audit took **2.012 seconds**. No error/retry. |
+| Parallel character state and persistence. | Pip completed its self-directed walk to the flowerbed and produced an appropriately grounded reflection. The game was saved/paused at cycle 183; the tulip remained owned/carried by Pip. |
+| Visible UI and browser. | Connected robot bodies and duplicate gift-card cleanup were visually checked. Browser console had **zero captured errors**. Mobile was not rerun for this minimal card change; the v20 mobile check remains historical coverage. |
+| Independently confirmed remaining issues. | Eating can raise a held flower to the mouth while an unheld food bowl is consumed. A v22 worker is addressing this; **not fixed in v21**. Gift rendering also shifts approximately **29.7 cm on the next frame** at the tested live spacing; the receive alias worsens it and is not a fix. |
+
+Ignored evidence: `evidence/v21-reflection-replay.json` and `evidence/v21-live-reflection.json`. The exact replay and separate live request support this reflection case; they do not guarantee every future generated narration or memory edit. Two-turn conversation closure, relationships, a full sleep cycle and clean-machine setup remain unfinished.
 
 ## September 25, 2026 — frozen v20
 
-Build `2026-09-25.20` is the current live release. **308/308 offline tests passed in 9.47 seconds.** This replay fixes v19's temporary-held-food failure and verifies a pause before gift contact. Generated post-action narration still has the stale-state issue below.
+Historical build `2026-09-25.20` verified the waiting-gift replay below. **308/308 offline tests passed in 9.47 seconds.** This replay fixes v19's temporary-held-food failure and verifies a pause before gift contact. Generated post-action narration still has the stale-state issue below.
 
 | Check | Observed result |
 | --- | --- |
@@ -184,4 +199,4 @@ The left-fence printer, keyboard/screen, continuous lawn, neighborhood houses, p
 
 ## Remaining verification
 
-Ground post-action reflections in current engine outcomes: v20's transfer was correct but its later narration was stale. Improve two-turn conversation endings and redundant gift cards. Broaden busy/occupied recipient, decline, reassignment before/after contact, critical-need, separation, timeout, reset/reload and provider-failure checks. Preserve unrelated user work and apply ownership/effects once. Continue accommodation edges, finite-food depletion, longer creation/use plans, memory consolidation, remaining poses/viewports and clean-machine setup. A full sleep cycle and relationships remain unfinished. The recorded mobile and pause/resume checks are successful baselines, not exhaustive coverage; distinguish generated prose from physical evidence.
+Broaden reflection/memory checks after v21 passed the exact stale-gift replay and separate live request; retain v20's narration failure as a regression case. Fix the confirmed eating/held-flower bug and measured next-frame gift shift; v22 eating work is in progress, not shipped in v21. Improve two-turn conversation endings and redundant gift cards. Broaden busy/occupied recipient, decline, reassignment before/after contact, critical-need, separation, timeout, reset/reload and provider-failure checks. Preserve unrelated user work and apply ownership/effects once. Continue accommodation edges, finite-food depletion, longer creation/use plans, memory consolidation, remaining poses/viewports and clean-machine setup. A full sleep cycle and relationships remain unfinished. The recorded mobile and pause/resume checks are successful baselines, not exhaustive coverage; distinguish generated prose from physical evidence.

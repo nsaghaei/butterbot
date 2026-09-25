@@ -1,6 +1,6 @@
 # Debugging checkpoint
 
-Diagnostics are shipped in **frozen v20, build `2026-09-25.20`**. The full source suite passed **308/308 tests**. A consented gift waited through Pip's eating/audit, preserved ownership across a pre-contact pause, transferred once and passed Gemma verification. A subsequent reflection still narrated stale waiting state. [PLAYTESTS.md](PLAYTESTS.md) separates engine success, generated narration defects, historical failures and remaining cases.
+Diagnostics are shipped in **frozen v21, build `2026-09-25.21`**. The full source suite passed **315/315 tests**. The recorded stale-gift reflection passed both its exact real-Gemma replay and a separate live think/audit request after adding lifecycle/evidence checks and a temporal reflection frame. [PLAYTESTS.md](PLAYTESTS.md) preserves the original v20 failure and distinguishes these successes from broader unfinished work.
 
 ## Available evidence
 
@@ -25,9 +25,18 @@ Gift `social_model` records have `kind:'gift'` and purpose `gift acceptance`; th
 
 At 4978.9, post-completion reflection falsely described Pip still being occupied and Butterbot waiting to present the tulip. The completed plan, actual gift evidence and stale bubble were visible together. This is a narration-grounding defect, not evidence that ownership failed. Both handoff poses and the 375 × 812 gift-result panel were checked; no horizontal overflow or browser-console errors occurred.
 
+## v21 reflection verification
+
+The exact paused completed-gift cycle-182 replay against real Gemma/source v21 completed in 5.472 seconds. The generated thought said the tulip was safely in Pip's hands, with speech about the successful exchange, a gift memory and a chat suggestion. Ignored evidence: `evidence/v21-reflection-replay.json`.
+
+The separate player-UI request “Reflect on the gift you just gave to Pip”, cycle 183, proposed/selected a think step in records 1465/1466. Reflection 1467 was accepted at 4990.7333 after 4.744 seconds and described the completed gift; one memory increased the count from six to seven. Outcome 1468 and independent Gemma audit 1470 completed 1/1 at 4994.2333, without error/retry. The game was saved/paused and Pip still owned/carried the tulip. Robot bodies and exact duplicate gift-card cleanup were visually checked; browser console had zero captured errors. Ignored evidence: `evidence/v21-live-reflection.json`.
+
+Reflection output is discarded when the current lifecycle/completion evidence changes during inference, before applying thoughts, suggestions or memory edits. Its input frame separates current goal, verified steps and actual ownership from historical failures/inspections. These safeguards and two real-model results verify this case, not universal semantic accuracy. No new mobile check is claimed beyond historical v20 coverage.
+
 ## Remaining verification and limits
 
-- Ground reflections in current recorded outcomes and keep the v20 stale-narration example for regression. Continue gift decline, occupied/busy recipient, cancellation before/after contact, reset/reload and provider-failure checks in isolated worlds, then playtest the integrated single live server. Preserve saves and do not run competing model-driven servers.
+- Broaden current-outcome reflection/memory checks and keep the v20 stale-narration example for regression. Continue gift decline, occupied/busy recipient, cancellation before/after contact, reset/reload and provider-failure checks in isolated worlds, then playtest the integrated single live server. Preserve saves and do not run competing model-driven servers.
+- Independently confirmed presentation defects remain: eating raises a held flower while consuming an unheld bowl, and a gift shifts about 29.7 cm on the next frame at the tested spacing. Eating work is underway for v22; the receive alias worsens the gift shift. Neither is fixed by v21 reflection/card changes.
 - Improve noisy social lifecycle/model cards and consider a dedicated active-session section in the diagnostic report. Logs from both brains may contain copies of a shared session event; use session and record IDs when interpreting effects.
 - Broaden actual HTTP/shutdown checks on the Windows launch mechanism. Hard termination cannot guarantee a final flush; periodic capture and normal save flushing remain the fallback.
 - The report cannot recover model text never logged. Polling can miss transitions that occur entirely between captures; bounded recent records are not a complete journal. Later reconstructed context is not the original model input.

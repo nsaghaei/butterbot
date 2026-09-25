@@ -1,6 +1,6 @@
 # First social milestone and continuation
 
-**Current checkpoint: frozen v20, build `2026-09-25.20`; 308/308 offline tests passed.** Butterbot and Pip are visible independent robots with grounded two-turn conversations and consented physical gifts. v18 verified conversation and mid-speech pause/resume; v20 verified waiting through Pip's eating/audit, recipient acceptance and a paused gift handoff before contact. The broader social simulation remains unfinished, and post-action reflections can still describe stale state.
+**Current checkpoint: frozen v21, build `2026-09-25.21`; 315/315 offline tests passed.** Butterbot and Pip have grounded two-turn conversations and consented physical gifts. v21's exact completed-gift replay and live “Reflect on the gift you just gave to Pip” request both correctly described the successful exchange; the live think step and independent audit passed without error/retry. This addresses the recorded stale-narration case without guaranteeing every generated reflection. Eating/held-object presentation, handoff continuity and the broader social simulation remain unfinished.
 
 ## Implemented behavior
 
@@ -16,6 +16,8 @@ Pause preserves the active session and excludes paused wall time from phase dead
 
 Gifts use the same paired-session infrastructure with `kind:'gift'`: wait for an eligible recipient, request its Laya acceptance, reserve both participants, approach and perform a 1.4-second give/receive gesture. Temporary hands occupied by the recipient's current eligible job do not cause premature refusal; that job and its audit finish before free hands are checked. An occupied ready recipient is rejected without a forced drop. Actual contact transfers owner/carrier once; its evidence remains distinct from later gesture completion, including cancellation after contact. Giving does not invent conversation rewards or relationship changes. The UI shows gift consent probabilities, waiting/handoff status and physical evidence; character switching locks requests until both the API acknowledgment and matching state update arrive.
 
+Reflection now prioritizes current goal, verified steps and ownership over historical failures and old inspections. A lifecycle/evidence check rejects output generated across a changed stage, step, job or completed outcome, then requests a fresh reflection. Full editable memory remains available. Gift cards remove exact duplicate proof text; broader lifecycle presentation still needs polish.
+
 ## Actual live evidence
 
 - **v16, cycle 176 failed:** acceptance and approach occurred, but pausing during the first line invalidated participant revisions. Resuming canceled the session with zero fully delivered turns/effects and left an orphaned job.
@@ -26,14 +28,15 @@ Gifts use the same paired-session infrastructure with `kind:'gift'`: wait for an
 - **v19, Pip cycle 10 passed a consented gift:** “Give the Orange Tulip to Butterbot.” Acceptance was 80.7% versus 19.3% decline, context 350/362. Contact at 4927.05 and 1.42146 m transferred owner/carrier pip → actor once; the 1.4-second gesture and Gemma audit completed. The later Butterbot cycle 181 request failed while Pip temporarily held food during its own eating job; preserve that failure.
 - **v20, cycle 182 passed the failed-save replay:** “Give the Orange Tulip to Pip after Pip finishes the current activity.” Pip finished eating, leaving four servings, and its audit verified before invitation. Acceptance was 87.93% versus 12.07%, context 330/362. Paused at 0.6667/1.4 seconds before contact, with zero transfers and donor-held ownership; UI Resume continued. Contact at 4968.2667 and 1.627823 m transferred actor → pip once; gesture completed at 4968.9333 and Gemma verified at 4973.45. No error/retry or fabricated social reward.
 - v20 give/receive poses were checked; the 375 × 812 gift-result layout fit without horizontal overflow and browser console had zero errors. A reflection at 4978.9 still falsely described waiting to present the already-transferred gift. Engine evidence is correct; generated narration needs grounding.
+- **v21 replay and live reflection passed:** the exact paused completed-gift source replay took 5.472 seconds and described the tulip in Pip's hands, with successful-exchange speech, a gift memory and a chat suggestion. Live cycle 183 then accepted a 4.744-second reflection, added one experience (memory 6 → 7), and verified the think step at 4994.2333 without error/retry. Pip also completed its flowerbed walk and reflected appropriately. Tulip ownership/carrier remained Pip; the game was saved/paused. Robot bodies and card cleanup were checked with zero captured console errors. Mobile was not rerun for this small change.
 
 See [PLAYTESTS.md](PLAYTESTS.md) for the full history. Raw exports and saves stay ignored and local.
 
 ## Continuation
 
-1. **Current-outcome reflection.** Correct stale post-action narration using the actual completed plan and latest transfer/delivery evidence. Preserve the v20 mismatch as a regression case. A correct engine result must not be rewritten to match generated fiction.
+1. **Reflection follow-through and physical presentation.** v21 passed the recorded stale-gift case; broaden memory/reflection checks and retain the v20 failure as a regression. A confirmed eating defect raises a held flower while consuming an unheld bowl; a v22 worker is addressing it, not a shipped v21 fix. Gift rendering still shifts about 29.7 cm on the next frame at the tested spacing; the receive alias worsens it.
 2. **Conversation endings.** The current two-turn exchange can finish with an unanswered question. Improve closure before adding longer turn-taking, more participants or relationships. Do not credit undelivered words or model waiting as social success.
-3. **Logs and presentation.** Invitation choices/probabilities, generated turns and delivered transcript cards are distinct, but repeated lifecycle records can be clearer and less noisy. Continue mobile and overlapping-bubble review.
+3. **Logs and presentation.** Invitation choices/probabilities, generated turns and delivered transcript cards are distinct. v21 removes exact duplicate gift-proof text, but repeated lifecycle records can be clearer and less noisy. Continue mobile and overlapping-bubble review.
 4. **Recovery and memory.** Consent and the tested busy-recipient/pause cases now work. Broaden other busy/occupied jobs, decline, cancellation before/after gift contact, critical-need, reset and reload checks. Preserve unrelated user work and exactly-once ownership/effects. Continue semantic memory curation without automatically deleting distinct or opposite facts. Relationships and a full sleep cycle remain future work.
 
 ## Implementation map
