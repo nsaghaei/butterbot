@@ -17,6 +17,7 @@ const lines=async file=>(await readFile(file,'utf8')).trim().split('\n').filter(
 
 test('debug report retains exact decision evidence and readable current physics, plan and failures',()=>{
   const world=fixture(),b=world.selected;
+  b.lastUserGoal={text:'Print an orange',status:'active'};b.stepResults={0:{status:'verified',outcome:'Reached printer'}};
   b.logs.push({id:'r1',cycle:3,time:1,type:'error',status:'failed',error:'Old blocked goal'});
   b.logs.push({id:'r2',cycle:4,time:2,type:'laya',status:'accepted',question:'Choose material',choices:{a:'Polymer',b:'Wood'},response:{choice:'a',probabilities:{a:.8,b:.2}},request:{phase:'description',state:'Exact full state'},decisionSnapshot:{goal:{text:b.objective,source:'user',step:1,plan:b.planSteps,stage:'question'}}});
   b.logs.push({id:'r3',cycle:4,time:3,type:'design',status:'rejected',prompt:'Exact construction prompt',proposal:{name:'Orange',code:'return makeOrange());'},error:'Unexpected extra parenthesis'});
@@ -24,8 +25,10 @@ test('debug report retains exact decision evidence and readable current physics,
   assert.equal(JSON.stringify(b),before);assert.deepEqual(report.latestRecords.at(-1).record,b.logs.at(-1));
   assert.equal(report.latestRecords[1].record.response.probabilities.a,.8);assert.equal(report.current.currentStep.number,2);assert.equal(report.current.fullPlan.length,2);
   assert.equal(report.current.physics.grounded,true);assert.equal(report.current.held[0].name,'Orange');assert.equal(report.objects[0].id,'printer');assert.equal(report.execution.outstandingRequests[0].context,'Precise input');
+  assert.deepEqual(report.current.lastUserGoal,b.lastUserGoal);assert.deepEqual(report.current.stepResults,b.stepResults);
   assert.equal(report.failureReasons[0].currentGoal,false);assert.equal(report.failureReasons[1].currentGoal,true);
   report.latestRecords.at(-1).record.proposal.code='mutated report';assert.equal(b.logs.at(-1).proposal.code,'return makeOrange());');
+  report.current.stepResults[0].outcome='mutated';assert.equal(b.stepResults[0].outcome,'Reached printer');
 });
 
 test('latest records are bounded and timeline includes thoughts, choices and events without invoking models',()=>{
@@ -97,6 +100,7 @@ test('isolated HTTP debug endpoints are read-only and export, save and graceful 
     await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Isolated server did not start: '+output)),8000);child.once('error',error=>{clearTimeout(timer);reject(error);});child.stdout.on('data',chunk=>{output+=chunk;if(output.includes('Maker Garden:')){clearTimeout(timer);resolve();}});child.once('exit',()=>{clearTimeout(timer);reject(Error('Isolated server exited: '+output));});});
     const url='http://127.0.0.1:'+port,read=async route=>{const response=await fetch(url+route,{signal:AbortSignal.timeout(5000)});assert.equal(response.status,200);return response.json();},post=async(route,data={})=>{const response=await fetch(url+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(5000)});assert.equal(response.status,200,await response.text());};
     const before=await read('/api/state'),report=await read('/api/debug');assert.equal(report.current.objective,'Offline printer failure fixture');assert.equal(report.current.currentStep.number,2);assert.equal(report.latestRecords[0].record.response.probabilities.a,.75);assert.equal(report.latestRecords[1].record.proposal.code,'return createProp());');
+    assert.equal((await read('/api/debug?limit=1')).latestRecords.length,1);assert.equal((await fetch(url+'/api/debug?limit=0')).status,400);
     const downloaded=await fetch(url+'/api/debug/export');assert.equal(downloaded.status,200);assert.match(downloaded.headers.get('content-disposition'),/attachment.*garden-debug\.json/);const exported=await downloaded.json();assert.deepEqual(exported.latestRecords,report.latestRecords);assert.equal(exported.journal.file,path.join(dir,'debug','history.jsonl'));
     const after=await read('/api/state');for(const key of ['objective','cycle','stage','planSteps','planIndex','memory','entities'])assert.deepEqual(after[key],before[key],key+' changed after read-only debug requests');assert.deepEqual(after.inference.calls,{laya:0,generator:0});
     assert.ok(providerCalls.length<=2);assert.ok(providerCalls.every(u=>u==='http://127.0.0.1:1/api/health'||u==='http://127.0.0.1:1/api/tags'));

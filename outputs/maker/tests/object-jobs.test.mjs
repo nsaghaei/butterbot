@@ -53,7 +53,7 @@ test('giving rechecks recipient distance at contact and keeps the object when th
 test('eating takes time, consumes one serving, saves remaining servings and removes exhausted food',()=>{
   const g=garden();let restored;try{const e=add(g,{name:'Orange',mass:.2,attributes:{edible:true,servings:2}}),b=start(g,{action:'eat',target:e.id,label:'Eat orange'});b.needs.hunger=80;
     ticks(g,150);assert.equal(e.servings,2);assert.ok(b.needs.hunger>=80);assert.equal(outcome(b),undefined);assert.equal(e.carrier,'actor');ticks(g,35);
-    assert.equal(e.servings,1);assert.equal(outcome(b).status,'completed');assert.ok(b.needs.hunger>55&&b.needs.hunger<55.2);assert.equal(e.carried,false);
+    assert.equal(e.servings,1);assert.equal(outcome(b).status,'completed');assert.ok(b.needs.hunger>52&&b.needs.hunger<52.4);assert.equal(outcome(b).needFulfillment.before.hunger-outcome(b).needFulfillment.after.hunger,28);assert.equal(e.carried,false);
     restored=garden();restored.restore(g.save());const remaining=restored.physics.entities.get(e.id);assert.equal(remaining.servings,1);assert.equal(remaining.edible,true);
     start(restored,{action:'eat',target:e.id,label:'Finish orange'});ticks(restored,185);assert.equal(restored.physics.entities.has(e.id),false);assert.equal(restored.designs[e.id],undefined);assert.equal(outcome(restored.selected).status,'completed');
     const saved=restored.save();assert.ok(!saved.world.entities.some(x=>x.id===e.id));assert.equal(saved.designs[e.id],undefined);assert.ok(!feasibleActions(restored,restored.selected).some(a=>a.target===e.id));

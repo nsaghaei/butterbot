@@ -13,6 +13,35 @@ function fixture(){
   return {garden,brain,add,entities};
 }
 
+test('nonthrowable objects normalize zero and legacy positive throw limits without enabling throwing',()=>{
+  for(const kind of ['soft','vehicle','character','rope','cloth','fixture'])for(const speed of [undefined,0,6]){
+    const raw=speed===undefined?{}:{maxThrowSpeed:speed},attrs=normalizeAttributes(raw,kind,kind==='vehicle'?90:1,[.4,.4,.4]);
+    assert.equal(attrs.throwable,false,kind);assert.equal(attrs.maxThrowSpeed,0,kind);
+  }
+  const {garden,brain,add}=fixture(),keepsake=add('keepsake',{attributes:{throwable:false,maxThrowSpeed:6}});keepsake.carried=true;keepsake.carrier='actor';
+  assert.equal(attributesFor(keepsake).maxThrowSpeed,0);assert.throws(()=>validateAction(garden,brain,{action:'throw',target:keepsake.id,x:4,z:0,speed:1}),/cannot be thrown/);assert.ok(!feasibleActions(garden,brain).some(a=>a.action==='throw'));
+});
+
+test('actually throwable objects retain the 1–10m/s limit and reject zero or malformed speeds',()=>{
+  assert.equal(normalizeAttributes({},'prop',1,[.4,.4,.4]).maxThrowSpeed,6);
+  for(const speed of [1,4,10])assert.equal(normalizeAttributes({throwable:true,maxThrowSpeed:speed},'prop',1,[.4,.4,.4]).maxThrowSpeed,speed);
+  for(const speed of [0,.5,-1,11,NaN,Infinity,'4'])assert.throws(()=>normalizeAttributes({throwable:true,maxThrowSpeed:speed},'prop',1,[.4,.4,.4]),/throw speed/);
+  for(const speed of [-1,11,NaN,Infinity,'0'])assert.throws(()=>normalizeAttributes({throwable:false,maxThrowSpeed:speed},'soft',1,[.4,.4,.4]),/throw speed/);
+  const anchored=normalizeAttributes({anchored:true,portable:true,throwable:true,maxThrowSpeed:0},'prop',1,[.4,.4,.4]);assert.equal(anchored.throwable,false);assert.equal(anchored.maxThrowSpeed,0);
+});
+
+test('exact generated soft and anchored attributes with zero throw speed compile successfully',async()=>{
+  const {compileDesign}=await import('../design.mjs');
+  const common={edible:false,servings:0,throwable:false,maxThrowSpeed:0};
+  for(const proposal of [
+    {name:'Soft cushion',kind:'soft',mass:1,affordances:['squish'],attributes:{...common,portable:true,anchored:false,giftable:true,pushable:true}},
+    {name:'Anchored tree',kind:'prop',mass:150,affordances:['display'],attributes:{...common,portable:false,anchored:true,giftable:false,pushable:false}}
+  ]){
+    const design=await compileDesign({...proposal,code:'const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.BoxGeometry(.4,.4,.4),new THREE.MeshToonMaterial({color:0x72aa55})));return g;'});
+    assert.equal(design.attributes.maxThrowSpeed,0);assert.equal(design.attributes.throwable,false);assert.equal(design.attributes.anchored,proposal.attributes.anchored);
+  }
+});
+
 test('explicit throw, push, give and drop requests cannot be omitted from an activity plan',()=>{
   for(const action of ['throw','push','give','drop']){
     assert.throws(()=>validatePlanCoverage(action+' the cube.',[{action:'inspect'}]),new RegExp(action));

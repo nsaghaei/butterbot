@@ -1,7 +1,8 @@
+param([string]$Release = 'v11')
 $ErrorActionPreference = 'Stop'
 
 $appUrl = 'http://127.0.0.1:8790/'
-$releaseDirectory = Join-Path $PSScriptRoot 'releases/v6'
+$releaseDirectory = Join-Path $PSScriptRoot ('releases/' + $Release)
 $entryFile = Join-Path $releaseDirectory 'server.mjs'
 $sharedModules = Join-Path $PSScriptRoot 'node_modules'
 $saveFile = Join-Path $PSScriptRoot 'saved/garden-v2.json'
@@ -46,8 +47,8 @@ try {
         throw 'Node.js was not found on PATH or in the existing Codex runtime.'
     }
     New-Item -ItemType Directory -Force -Path $logDirectory, (Split-Path $saveFile -Parent) | Out-Null
-    $standardLog = Join-Path $logDirectory 'maker-v6.log'
-    $errorLog = Join-Path $logDirectory 'maker-v6-error.log'
+    $standardLog = Join-Path $logDirectory ('maker-' + $Release + '.log')
+    $errorLog = Join-Path $logDirectory ('maker-' + $Release + '-error.log')
     $childSettings = @{
         PORT = '8790'
         SAVE_FILE = $saveFile

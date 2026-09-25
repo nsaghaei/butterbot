@@ -4,9 +4,58 @@ import {Garden} from '../garden.mjs';
 import {compileDesign} from '../design.mjs';
 import {buildDecisionContext} from '../decision-context.mjs';
 import {PRINTER} from '../environment-layout.mjs';
+import {MakerWorld} from '../world.mjs';
 
 const cube=await compileDesign({name:'Keepsake',description:'A small cream-colored keepsake cube.',kind:'prop',mass:1,affordances:['display'],code:'const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.BoxGeometry(.4,.4,.4),new THREE.MeshToonMaterial({color:0xffedb5})));return g;'});
 const providers={generator:{ready:false},laya:{ready:false},healthTime:Date.now(),calls:{},health:async()=>{}};
+
+test('blocked nested printer navigation stops with a real failure instead of waiting forever',()=>{
+ const w=new MakerWorld({providers});try{
+  w.actor.body.setTranslation(PRINTER.approach,true);w.actor.goal={x:PRINTER.center.x,z:PRINTER.center.z};w.stage='approaching';
+  for(let i=0;i<900&&w.stage==='approaching';i++)w.step();
+  assert.equal(w.stage,'failed');assert.match(w.error,/Route to printer is blocked/);assert.equal(w.actor.goal,null);assert.equal(w.result.ok,false);
+ }finally{w.physics.dispose();}
+});
+
+test('each new nested print clears old results and repair state without losing the outer plan',()=>{
+ const g=new Garden({providers,seedFood:false});try{
+  const b=g.selected;g.assign('actor','Print a new object');b.planSteps=[{action:'print',label:'Print a new object'}];b.result={ok:true,description:'Old success'};b.activeId='old';b.pendingDesign=cube;b.review={ok:true};b.lastDesignError='old failure';b.commitFailures=2;b.waitCount=2;
+  b.startAction(b.planSteps[0]);for(const key of ['result','activeId','pendingDesign','review','lastDesignError'])assert.equal(b[key],null,key);assert.equal(b.commitFailures,0);assert.equal(b.waitCount,0);assert.equal(b.planSteps.length,1);assert.equal(b.stage,'planning');
+ }finally{g.physics.dispose();}
+});
+
+test('verification transport failures consume exactly one attempt each',async()=>{
+ let calls=0;const g=new Garden({providers:{...providers,verifyStep:async()=>{calls++;throw Error('Temporary verifier failure');}},seedFood:false});try{
+  const b=g.selected;g.assign('actor','Rest');b.planSteps=[{action:'rest',seconds:2,label:'Rest briefly'}];b.startAction(b.planSteps[0]);for(let i=0;i<125;i++)g.step();
+  for(let i=1;i<=3;i++){b.stage='verify_step';b.nextCall=0;await b.poll();assert.equal(b.verificationAttempts,i);assert.equal(b.stage,i===3?'failed':'awaiting_step_done');}assert.equal(calls,3);
+ }finally{g.physics.dispose();}
+});
+
+test('a planned help step retains its outcome for verification',async()=>{
+ const g=new Garden({providers:{...providers,reflect:async()=>({value:{thought:'I need an available resource.',speech:'There is no food here.',memory:[],proposedActions:[]}})},seedFood:false});try{
+  const b=g.selected;g.assign('actor','Explain what is missing');b.planSteps=[{action:'ask_for_help',label:'Explain the missing resource'}];b.startAction(b.planSteps[0]);await b.reflect('Explain missing resource');
+  assert.equal(b.stage,'awaiting_step_done');assert.equal(b.pendingStepEvidence.stepIndex,0);
+ }finally{g.physics.dispose();}
+});
+
+test('nested printer-use rejection preserves its stage and reaches a bounded honest failure',async()=>{
+ const w=new MakerWorld({providers:{...providers,laya:{ready:true},decide:async()=>({response:{choice:'use'}})}});try{
+  const e=w.physics.add(cube,{x:-1,y:.3,z:4});w.activeId=e.id;w.stage='use';w.interaction='rest';w.placement={x:-1,z:4};
+  for(let i=0;i<3;i++){w.nextCall=0;await w.poll();assert.match(w.error,/supporting surface/);assert.equal(w.commitFailures,i+1);assert.equal(w.stage,i===2?'failed':'use');}
+  assert.equal(w.actor.reclining,false);assert.equal(w.logs.filter(l=>l.type==='laya'&&l.status==='rejected').length,3);
+ }finally{w.physics.dispose();}
+});
+
+test('equivalent model suggestions cannot duplicate the intended move and discard its progress',async()=>{
+ let offered;
+ const g=new Garden({providers:{...providers,laya:{ready:true},decide:async(_s,_q,choices)=>{offered=choices;return {response:{choice:'a0'}};}},seedFood:false});try{
+  const b=g.selected;g.assign('actor','Walk to (1,1).');b.planSteps=[{action:'move',x:1,z:1,target:'',label:'Walk to the sunny patch'}];b.stage='action_decide';
+  b.suggestions=[{action:'move',x:1,z:1,label:'Walk to sunny patch'}];await b.poll();
+  assert.equal(Object.values(offered).filter(label=>/sunny patch/.test(label)).length,1);
+  for(let i=0;i<300&&b.stage==='acting';i++)g.step();
+  assert.equal(b.stage,'awaiting_step_done');assert.equal(b.logs.filter(l=>l.type==='action_outcome').length,1);
+ }finally{g.physics.dispose();}
+});
 
 test('new instructions preserve a held object for subsequent interaction',()=>{
  const g=new Garden({providers,seedFood:false});try{

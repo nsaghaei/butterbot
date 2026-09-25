@@ -100,10 +100,10 @@ test('printer approach reaches a position from which its description can actuall
   }finally{g.physics.dispose();}
 });
 
-test('fresh reset garden has one human actor, no created props, empty memories and no stale work',()=>{
+test('fresh unfurnished garden has one robot actor, no created props, empty memories and no stale work',()=>{
   const g=new Garden({seedFood:false,providers:mock});
   try{
-    assert.equal(g.brains.size,1);assert.equal(g.physics.entities.size,1);assert.equal(g.selected.actorName,'Agent Wobble');
+    assert.equal(g.brains.size,1);assert.equal(g.physics.entities.size,1);assert.equal(g.selected.actorName,'Butterbot');
     assert.equal(g.selected.actor.height,2.3);assert.deepEqual(g.selected.memory,[]);assert.equal(g.selected.job,null);
     assert.equal(g.selected.stage,'goal_select');assert.equal(g.printerOwner,null);assert.deepEqual(g.queue,[]);
     assert.deepEqual(g.designs,{});assert.equal(g.reservations.size,0);assert.equal(g.selected.lastInspection,undefined);
