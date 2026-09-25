@@ -1,0 +1,29 @@
+# Dependencies, model environments and private game history.
+**/node_modules/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+**/saved/
+**/evidence/
+**/debug/history.jsonl
+**/debug-report*.json
+
+# Keep the Maker Garden app, not other workspace experiments.
+/outputs/*
+!/outputs/maker/
+/outputs/maker/releases/*
+!/outputs/maker/releases/v6/
+
+# Keep reproducible build scripts, not downloads, scratch patches or model files.
+/work/*
+!/work/build-ui.cjs
+!/work/ui-main.mjs
+!/work/ui-scene.mjs
+!/work/freeze-release.ps1
+
+.DS_Store
+Thumbs.db
