@@ -6,9 +6,9 @@ The current game is **Maker Garden**: Butterbot and Pip, a garden, and a printer
 
 ## Current checkpoint
 
-The launcher selects **frozen v27**, build `2026-09-25.27`. **384/384 offline tests passed in 10.952 seconds.** Published checkpoint: `checkpoint-2026-09-25-v27`. Butterbot and Pip have independent goals, needs and memories; they can move, inspect and handle physical objects, use garden furniture, converse, and offer consented gifts. The printer generates objects whose capabilities are checked before use. This is a playable foundation for the larger Sims-like goal, which remains unfinished.
+The launcher selects **frozen v28**, build `2026-09-25.28`. **Node 398/398 and Python 16/16 offline tests passed.** Published checkpoint: `checkpoint-2026-09-25-v28`. Butterbot and Pip have independent goals, needs and memories; they can move, inspect and handle physical objects, use garden furniture, converse, and offer consented gifts. The printer generates objects whose capabilities are checked before use. This is a playable foundation for the larger Sims-like goal, which remains unfinished.
 
-After v26 verified fresh and continued printed gifts, an exact replay traced its reflection failure to an exhausted 8,192-token context. v27’s larger reflection context passed the actual UI request to reflect on the orange given to Pip: the final two-step plan completed after **two planning refreshes**, both generated reflections parsed, and memory increased **8 → 9** with the second edit revising the same entry. The UI showed Plan completed, with zero captured console errors; the garden is saved/paused. Pip still holds the untouched orange, though its hands do not visually support it during listening. Broader reliability, social poses and conversation quality remain unfinished. See [PLAYTESTS.md](outputs/maker/PLAYTESTS.md), [HANDOFF.md](HANDOFF.md) and the [social milestone](outputs/maker/SOCIAL_PLAN.md) for detailed evidence and continuation work.
+The latest v28 live request returned the same untouched orange from Pip to Butterbot and independently verified the gift. Butterbot then declined the chat, so the two-step goal stopped honestly at **1/2**, with no dialogue or social reward. Idle palms supported the held orange before and after transfer; conversation poses were not tested live because of the refusal. The game is saved/paused, and the browser captured zero errors. A proven Windows UTF-8 decoding bug made local token estimates conservative in the captured case; actual adapter-encoded requests stayed below 512. The transport correction is planned for v29. Broader social and physical polish remains unfinished. See [PLAYTESTS.md](outputs/maker/PLAYTESTS.md), [HANDOFF.md](HANDOFF.md) and the [social milestone](outputs/maker/SOCIAL_PLAN.md) for detailed evidence and continuation work.
 
 ## How it works
 
@@ -75,7 +75,7 @@ To run working source, first stop the existing game server, then run `node serve
 | `PORT` | Source server port, `8790` |
 | `SAVE_FILE` | Source save; defaults to `saved/garden-v2.json` |
 
-Unavailable models produce visible failures. Laya's 512-token context is checked with the exact tokenizer. Essential object names and positions are not silently omitted to squeeze an oversized decision into the limit.
+Unavailable models produce visible failures. Laya's 512-token context is checked with the exact tokenizer. Essential object names and positions are not silently omitted to squeeze an oversized decision into the limit. The installed SDK clamps an invalid checkpoint temperature for 11-or-more-choice questions; their confidence values are uncalibrated. Two-choice invitations are outside that category.
 
 ## Development and debugging
 
@@ -89,6 +89,13 @@ node debug.mjs --out debug-report.json
 
 Tests use isolated worlds; context tests also need the configured tokenizer. The debug CLI reads the running server without submitting a goal by default. Its optional `--goal` submits an objective. Reports and the local journal preserve actual decisions, inputs, errors, and outcomes. The interface's Diagnostics section provides **Debug session** and **Export debug**, including recorded need effects.
 
+From the repository root, run the CPU-only Laya packing/adapter regressions with your configured project Python runtime. `LAYA_TOKENIZER` selects the checkpoint tokenizer; `LAYA_COMMON_PY` selects the compatible installed SDK’s `common.py`. `LAYA_AGENT_PY` is optional when `agent.py` is alongside it. These checks inspect formatter behavior without loading model weights.
+
+```powershell
+$env:LAYA_COMMON_PY = 'C:/path/to/Lib/site-packages/laya/common.py'
+& $env:TOKENIZER_PYTHON -B -m unittest discover -s outputs/maker/tests -p 'test_laya_*.py' -v
+```
+
 From the repository root, run `node work/build-ui.cjs` to build the browser bundle from `work/ui-scene.mjs` and `work/ui-main.mjs`. After verification, `work/freeze-release.ps1 -Release <new-version>` creates a new frozen release. Existing release directories must never be overwritten. The project does not change PowerShell execution policy.
 
 | Path | Contents |
@@ -99,10 +106,10 @@ From the repository root, run `node work/build-ui.cjs` to build the browser bund
 | `outputs/maker/tests/` | Includes capsule destinations, clear furniture approaches, posture transitions and bounded navigation recovery |
 | `outputs/maker/execution-evidence.mjs` | Recorded completion evidence and shared navigation tolerance for verification |
 | `outputs/maker/social-jobs.mjs` | Paired conversation/gift sessions, actual delivery/transfer, cancellation and effects |
-| `outputs/maker/releases/` | Immutable application checkpoints; launcher defaults to v27 |
+| `outputs/maker/releases/` | Immutable application checkpoints; launcher defaults to v28 |
 | `outputs/maker/HANDOFF-*.md` | Scoped implementation notes; some describe earlier checkpoints |
 | `work/` | Tracked UI build and release scripts |
 
 Dependencies are pinned in `pnpm-lock.yaml`; bundled Ammo files retain their attribution. Model downloads, installed dependencies, logs, saved scenes, and raw playtest evidence are excluded from Git.
 
-Next, improve held-object support during social poses and implement the planned exact per-question Laya packing while preserving required facts. Continue broader reflection and memory checks. Continue food/hand invalidation, interrupted meal, reflection and memory checks. The held-flower eating case passed in v23 after v22 first blocked it honestly. Rigid-gift smoothing passes offline regressions but still needs live handoff review; soft-body node handoff and receiver hand alignment remain unfinished. Broader card cleanup, conversation endings, relationships, a full sleep cycle and verified clean-machine installation remain unfinished.
+Next, resolve the local-versus-adapter token-count discrepancy and verify carry support during an accepted live conversation. Continue broader reflection and memory checks. Continue food/hand invalidation, interrupted meal, reflection and memory checks. The held-flower eating case passed in v23 after v22 first blocked it honestly. Rigid-gift smoothing passes offline regressions but still needs live handoff review; soft-body node handoff and receiver hand alignment remain unfinished. Broader card cleanup, conversation endings, relationships, a full sleep cycle and verified clean-machine installation remain unfinished.

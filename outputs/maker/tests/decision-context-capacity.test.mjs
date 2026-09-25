@@ -18,7 +18,7 @@ function world(){
   return g;
 }
 function assertPreserved(context,fit,b){
-  assert.equal(fit.tokenBudget.stateLimit,362);assert.ok(fit.tokenBudget.stateTokens<=362);assert.ok(fit.tokenBudget.stateTokens+fit.tokenBudget.headerTokens<512);
+  assert.equal(fit.tokenBudget.stateLimit,511-fit.tokenBudget.headerTokens);assert.ok(fit.tokenBudget.stateTokens<=fit.tokenBudget.stateLimit);assert.ok(fit.tokenBudget.stateTokens+fit.tokenBudget.headerTokens<512);
   assert.ok(fit.state.includes(story.objective),'The full user objective must reach Laya');
   assert.deepEqual(context.snapshot.goal.canonicalStep,b.planSteps[b.planIndex]);
   assert.equal(context.snapshot.goal.resolvedStep.action,b.planSteps[b.planIndex].action);
@@ -50,7 +50,7 @@ test('the actual eight-step tulip story fits the CPU checkpoint tokenizer at eve
         reports.push(fit.tokenBudget.stateTokens);
       }
     }
-    console.log('Eight-step story, 24 actual-tokenizer contexts:',Math.min(...reports)+'–'+Math.max(...reports)+' of 362 state tokens');
+    console.log('Eight-step story, 24 actual-tokenizer states:',Math.min(...reports)+'–'+Math.max(...reports),'tokens, each within its measured question budget');
   }finally{g.physics.dispose();}
 });
 
@@ -88,7 +88,7 @@ test('actual movement, grip, throw and placement outcomes still fit as the story
     }
     assert.equal(b.stage,'complete');assert.ok(reports.length>=24);
     const tulip=g.physics.entities.get('item-1');assert.ok(Math.hypot(tulip.body.translation().x-2,tulip.body.translation().z-3)<.02);assert.equal(tulip.carried,false);
-    console.log('Physical story tokenizer maximum:',Math.max(...reports),'of362 across',reports.length,'contexts');
+    console.log('Physical story tokenizer maximum:',Math.max(...reports),'state tokens across',reports.length,'contexts; every full sequence stays below512');
   }finally{g.physics.dispose();}
 });
 
@@ -97,8 +97,8 @@ test('irreducible checkpoint overflow is reported with measured budgets rather t
     const b=g.selected;b.objective='Keep every exact detail. '+Array.from({length:500},(_,n)=>'object'+n).join(' ');b.stage='action_decide';
     const context=buildDecisionContext(b);assert.ok(context.variants.every(v=>v.text.includes(b.objective)));
     await assert.rejects(fitDecisionContext(context,'Choose.',{a:'Continue'}),error=>{
-      assert.match(error.message,/no facts were silently truncated \(smallest state \d+ tokens; limit 362; header \d+\)/);
-      assert.equal(error.tokenBudget.stateLimit,362);assert.ok(error.tokenBudget.profiles.every(v=>v.stateTokens>362));return true;
+      assert.match(error.message,/no facts were silently truncated \(smallest state \d+ tokens; limit \d+; header \d+\)/);
+      assert.equal(error.tokenBudget.stateLimit,511-error.tokenBudget.headerTokens);assert.ok(error.tokenBudget.profiles.every(v=>v.stateTokens>error.tokenBudget.stateLimit));return true;
     });
   }finally{g.physics.dispose();}
 });
@@ -123,7 +123,7 @@ test('verbose false verification and both following context-capacity errors fit 
       if(index){assert.equal(context.snapshot.feedback.inference.code,'context_capacity');assert.equal(context.snapshot.feedback.inference.message,error);assert.match(fit.state,/context capacity/);}
       assert.equal(b.error,error);assert.equal(b.logs[1].result.explanation,explanation,'Context fitting never rewrites Gemma audit evidence');counts.push(fit.tokenBudget.stateTokens);
     }
-    console.log('Live verification feedback/recovery tokenizer:',counts.join('/'),'of362');
+    console.log('Live verification feedback/recovery tokenizer:',counts.join('/'),'state tokens, each within its measured question budget');
   }finally{g.physics.dispose();}
 });
 

@@ -21,7 +21,7 @@ function fixture(){
   garden.selected=garden.brains.get('actor');return {garden,b:garden.selected,peer:garden.brains.get('pip'),item:entities.get('item-6')};
 }
 function assertPreserved(b,context,fit){
-  assert.equal(fit.tokenBudget.stateLimit,362);assert.ok(fit.tokenBudget.stateTokens<=362);assert.equal(fit.tokenBudget.compaction.textTruncated,false);assert.ok(fit.state.includes(b.objective));
+  assert.equal(fit.tokenBudget.stateLimit,511-fit.tokenBudget.headerTokens);assert.ok(fit.tokenBudget.stateTokens<=fit.tokenBudget.stateLimit);assert.ok(fit.tokenBudget.stateTokens+fit.tokenBudget.headerTokens<512);assert.equal(fit.tokenBudget.compaction.textTruncated,false);assert.ok(fit.state.includes(b.objective));
   for(const o of context.snapshot.objects)assert.ok(fit.state.includes(o.id+' '+o.name+' ('+positionText(o.position)+')'),o.id+' catalog facts missing');
   for(const a of saved.answers)assert.ok(fit.state.includes(a.topic+'='+a.value),'Missing exact selected '+a.topic);
   assert.ok(fit.state.includes('$step1=item-6'));assert.match(fit.state,/Plan:.*print.*pick_up.*give/);
@@ -35,9 +35,8 @@ function assertPreserved(b,context,fit){
 test('the recorded printed gift fits pickup, give and both physical completion decisions with every required fact',async()=>{
   const {b,item}=fixture(),counts=[];
   const original=buildDecisionContext(b);
-  await assert.rejects(fitDecisionContext({...original,variants:original.variants.slice(0,6)},saved.question,saved.choices),error=>{
-    assert.equal(error.tokenBudget.stateLimit,362);assert.equal(error.tokenBudget.headerTokens,35);assert.equal(Math.min(...error.tokenBudget.profiles.map(p=>p.stateTokens)),371);return true;
-  });
+  const formerlyRejected=await fitDecisionContext({...original,variants:original.variants.slice(0,6)},saved.question,saved.choices);
+  assert.equal(Math.min(...formerlyRejected.tokenBudget.profiles.map(p=>p.stateTokens)),371);assert.ok(formerlyRejected.tokenBudget.stateTokens>362,'The original 371-token fixture now has legitimate checkpoint room');assertPreserved(b,original,formerlyRejected);
   for(const index of [1,2])for(const complete of [false,true]){
     b.planIndex=index;b.stage=complete?'awaiting_step_done':'action_decide';item.carrier=index===1?(complete?'actor':null):(complete?'pip':'actor');item.carried=!!item.carrier;
     b.pendingStepEvidence=complete?{stepIndex:index,step:structuredClone(b.planSteps[index]),outcome:index===1?'Picked up Small Edible Orange':'Gave Small Edible Orange to Pip after consent and a physical handoff'}:null;
@@ -60,9 +59,9 @@ test('consent to the newly printed orange fits with the whole public catalog and
   const {garden,b,peer,item}=fixture(),p=new Providers();item.carrier='actor';item.carried=true;
   p.decide=async(_state,question,choices,id,context)=>({...await fitDecisionContext(context,question,choices),response:{choice:'accept',probabilities:{accept:.7,decline:.3}}});
   const result=await p.giftAcceptance(peer,{id:b.actorId,name:b.actorName,style:b.style,position:b.actor.body.translation()},{id:'fixture-gift',topic:saved.objective,object:objectInfo(garden,item.id)});
-  assert.equal(result.tokenBudget.stateLimit,362);assert.ok(result.tokenBudget.stateTokens<=362);assert.ok(result.state.includes(peer.objective));
+  assert.equal(result.tokenBudget.stateLimit,511-result.tokenBudget.headerTokens);assert.ok(result.tokenBudget.stateTokens<=result.tokenBudget.stateLimit);assert.ok(result.tokenBudget.stateTokens+result.tokenBudget.headerTokens<512);assert.ok(result.state.includes(peer.objective));
   for(const o of result.decisionSnapshot.objects)assert.ok(result.state.includes(o.id+' '+o.name+' ('+positionText(o.position)+')'));
   for(const [key,value]of Object.entries(item.attributes))assert.ok(result.state.includes(key+'='+value));
   assert.match(result.state,/heldBy=actor/);assert.equal(result.tokenBudget.compaction.textTruncated,false);assert.equal(result.tokenBudget.compaction.allGiftAttributesPreserved,true);
-  console.log('Printed orange gift consent:',result.tokenBudget.stateTokens,'of362',result.tokenBudget.profile);
+  console.log('Printed orange gift consent:',result.tokenBudget.stateTokens,'of',result.tokenBudget.stateLimit,result.tokenBudget.profile);
 });

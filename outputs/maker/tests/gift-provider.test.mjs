@@ -26,9 +26,10 @@ test('gift consent fits the actual checkpoint with exact capabilities, own plans
   try{
     const result=await p.giftAcceptance(b,giver(),session),gift=result.decisionSnapshot.giftInvitation.object;
     assert.equal(result.choice,'decline');assert.deepEqual(result.response.probabilities,probabilities);assert.deepEqual(result.request,request);assert.deepEqual(Object.keys(result.choices),['accept','decline']);assert.deepEqual(request.requests[0].questions.do.criteria,result.choices);
-    assert.equal(result.tokenBudget.stateLimit,362);assert.ok(result.tokenBudget.stateTokens<=362);assert.ok(result.tokenBudget.stateTokens+result.tokenBudget.headerTokens<512);assert.equal(result.tokenBudget.compaction.textTruncated,false);assert.equal(result.tokenBudget.compaction.allGiftAttributesPreserved,true);
+    assert.equal(result.tokenBudget.stateLimit,511-result.tokenBudget.headerTokens);assert.ok(result.tokenBudget.stateTokens<=result.tokenBudget.stateLimit);assert.ok(result.tokenBudget.stateTokens+result.tokenBudget.headerTokens<512);assert.equal(result.tokenBudget.compaction.textTruncated,false);assert.equal(result.tokenBudget.compaction.allGiftAttributesPreserved,true);
     assert.ok(result.state.includes(b.objective));assert.match(result.state,/Current step 1\/2: approach snack-bowl/);assert.match(result.state,/Plan:.*approach.*pick_up/);assert.match(result.state,/Occupies hands; consider plan/);
     assert.ok(result.state.includes(gift.id+' '+gift.name));assert.ok(result.state.includes(gift.mass+'kg'));assert.ok(result.state.includes('size='+gift.dimensions.join('x')+'m'));assert.match(result.state,/heldBy=actor/);
+    assert.ok(result.state.includes(giver().style));assert.ok(result.state.includes('(2,1.2,2)'));assert.equal(result.tokenBudget.compaction.giverPublicProfilePreserved,true);
     for(const [key,value]of Object.entries(gift.attributes))assert.ok(result.state.includes(key+'='+value),key+' must reach the acceptance model');
     for(const object of result.decisionSnapshot.objects){const xyz=[object.position.x,object.position.y,object.position.z].map(n=>String(Number(n.toFixed(1)))).join(',');assert.ok(result.state.includes(object.id+' '+object.name+' ('+xyz+')'),object.id+' lost its name/position');}
     assert.equal(result.decisionSnapshot.memory[0].text,b.memory[0].text);assert.doesNotMatch(JSON.stringify(result),/PRIVATE_GIVER|giver-secret|PRIVATE_OBJECT_EXTENSION|PRIVATE_ATTRIBUTE_EXTENSION/);assert.equal(result.decisionSnapshot.giftInvitation.partner.giftReady,true);
@@ -42,6 +43,7 @@ test('gift consent keeps a current held item and exact upcoming pickup visible t
   p.decide=async(state,question,choices,id,context)=>{offered={state,context};return {state,response:{choice:'decline'},request:{id,question,choices}};};
   const result=await p.giftAcceptance(b,giver(),session);
   assert.equal(result.choice,'decline');assert.match(offered.state,/Held: snack-bowl/);assert.equal(offered.context.snapshot.goal.canonicalStep.target,'snack-bowl');assert.deepEqual(offered.context.snapshot.inventory.held.map(e=>e.id),['snack-bowl']);assert.equal(session.object.heldBy,'actor');
+  for(const variant of offered.context.variants){assert.ok(variant.text.includes('Butterbot(actor)'));assert.ok(variant.text.includes('(2,1.2,2)'));assert.ok(variant.text.includes(giver().style));assert.equal(variant.compaction.giverPublicProfilePreserved,true);}
 });
 
 test('malformed or no-longer-held offers never reach Laya and invalid choices retain their diagnostics',async()=>{

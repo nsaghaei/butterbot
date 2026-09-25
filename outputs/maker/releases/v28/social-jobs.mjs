@@ -1,0 +1,313 @@
+import {conciseWorld} from './actions.mjs';
+import {lifeNeeds} from './needs.mjs';
+import {updateMemory} from './memory.mjs';
+import {objectInfo} from './perception.mjs';
+import {attributesFor,liftingBlocker} from './object-attributes.mjs';
+
+const terminal=new Set(['complete','declined','canceled']);
+const flatDistance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
+const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
+const clone=value=>structuredClone(value);
+const critical=brain=>brain.needs?.energy<=15||brain.needs?.hunger>=90;
+const publicActor=brain=>({id:brain.actorId,name:brain.actorName,style:brain.style||brain.core?.style||'',position:{...brain.actor.body.translation()}});
+const freeze=value=>{if(value&&typeof value==='object'){Object.freeze(value);for(const child of Object.values(value))freeze(child);}return value;};
+
+// The Garden owns inference slots and time. A session owns only its two participants;
+// it never aborts a provider's shared request or advances a verified plan itself.
+export class SocialSessions {
+  constructor(garden){this.garden=garden;this.sessions=new Map();this.members=new Map();this.waiters=new Map();this.history=[];this.nextId=1;this.pauseStartedAt=null;}
+  setPaused(paused){
+    const now=Date.now();
+    if(paused){if(this.pauseStartedAt!==null)return false;this.pauseStartedAt=now;return true;}
+    if(this.pauseStartedAt===null)return false;
+    // An in-flight response can begin a new phase during a pause. Exclude only
+    // that phase's paused portion, not time belonging to its predecessor.
+    for(const session of this.sessions.values())session.phaseStartedAt+=Math.max(0,now-Math.max(this.pauseStartedAt,session.phaseStartedAt));
+    this.pauseStartedAt=null;return true;
+  }
+  forActor(id){return this.sessions.get(this.members.get(id))||null;}
+  waitingForActor(id){return this.sessions.get(this.waiters.get(id))||null;}
+  _brain(id){return this.garden.brains.get(id);}
+  _label(session){return session.kind==='gift'?'Gift handoff':'Conversation';}
+  _real(brain){return !!brain&&this._brain(brain.actorId)===brain&&this.garden.physics.entities.get(brain.actorId)===brain.actor&&!!brain.actor?.controller;}
+  _partnerFree(brain){
+    if(!this._real(brain)||brain.busy||brain.dispatched||brain.job||brain.pendingStepEvidence||critical(brain)||brain.actor.mounted)return false;
+    if(['idle','complete'].includes(brain.stage))return true;
+    return brain.goalSource==='self'&&['goal_select','action_plan'].includes(brain.stage);
+  }
+  available(brain,targetId){
+    const partner=this._brain(targetId);
+    return this.canRequest(brain,targetId)&&this._partnerFree(partner);
+  }
+  _canWaitFor(partner){return this._real(partner)&&!critical(partner)&&(this._partnerFree(partner)||partner.goalSource==='self'&&partner.stage!=='suspended');}
+  canRequest(brain,targetId){
+    return !!(this._real(brain)&&brain.actorId!==targetId&&!this.forActor(brain.actorId)&&!this.forActor(targetId)&&!this.waitingForActor(brain.actorId)&&!this.waitingForActor(targetId)&&!critical(brain)&&!brain.actor.mounted&&this._canWaitFor(this._brain(targetId)));
+  }
+  _emptyHands(id){return ![...this.garden.physics.entities.values()].some(entity=>entity.carrier===id);}
+  _canWaitForFreeHands(partner){
+    return partner?.goalSource==='self'&&!this._partnerFree(partner)&&!!(partner.job||partner.pendingStepEvidence||partner.busy||partner.dispatched||['action_decide','awaiting_step_done','verify_step'].includes(partner.stage));
+  }
+  canReceiveGift(brain,recipientId){return this.canRequest(brain,recipientId)&&(this._emptyHands(recipientId)||this._canWaitForFreeHands(this._brain(recipientId)));}
+  canGiveRequest(brain,objectId,recipientId){
+    if(!this.canReceiveGift(brain,recipientId))return false;
+    const object=this.garden.physics.entities.get(objectId);
+    try{return !!(object?.carried&&object.carrier===brain.actorId&&attributesFor(object).giftable&&!liftingBlocker(object));}catch{return false;}
+  }
+  begin(initiator,targetId){
+    if(!this.canRequest(initiator,targetId))throw Error('That character is not available for conversation right now');
+    return this._begin(initiator,targetId,'chat');
+  }
+  beginGift(initiator,objectId,recipientId){
+    if(!this.canGiveRequest(initiator,objectId,recipientId))throw Error('Giving requires a held giftable object and an available recipient with empty hands');
+    return this._begin(initiator,recipientId,'gift',objectId);
+  }
+  _begin(initiator,targetId,kind,objectId=null){
+    const partner=this._brain(targetId),ready=this._partnerFree(partner),participants=[initiator.actorId,targetId],session={
+      id:'social-'+this.nextId++,kind,objectId,initiatorId:initiator.actorId,partnerId:targetId,participants,
+      phase:ready?'invited':'waiting',heldParticipants:ready?[...participants]:[initiator.actorId],revisions:Object.fromEntries(participants.map(id=>[id,this._brain(id).revision])),
+      cycles:Object.fromEntries(participants.map(id=>[id,this._brain(id).cycle])),
+      createdAt:this.garden.time||0,elapsed:0,phaseElapsed:0,phaseStartedAt:Date.now(),
+      topic:String(initiator.job?.text||initiator.objective||'The garden and our current surroundings').slice(0,240),
+      transcript:[],participation:Object.fromEntries(participants.map(id=>[id,0])),effectsApplied:false,
+      needChanges:null,outcome:null,reason:null,speakerId:null,speech:null,request:null,
+      initiatorJob:initiator.job,accepted:false,giftDuration:kind==='gift'?1.4:null,giftElapsed:0,transferred:false,transferCount:0,transferredAt:null,giftEvidence:null
+    };
+    this.sessions.set(session.id,session);
+    // A busy peer remains outside the session hold so its current physical job and
+    // verification can finish. One incoming queue per peer prevents reciprocal waits.
+    for(const id of session.heldParticipants)this.members.set(id,session.id);
+    if(!ready)this.waiters.set(targetId,session.id);
+    this._log(session,session.phase);return session;
+  }
+  _current(session){
+    return this.sessions.get(session.id)===session&&!terminal.has(session.phase)&&session.participants.every(id=>{
+      const brain=this._brain(id);
+      if(session.phase==='waiting'&&id===session.partnerId)return this.waiters.get(id)===session.id&&!this.forActor(id)&&this._canWaitFor(brain);
+      return this._real(brain)&&brain.revision===session.revisions[id]&&brain.cycle===session.cycles[id];
+    });
+  }
+  _changePhase(session,phase){session.phase=phase;session.phaseElapsed=0;session.phaseStartedAt=Date.now();}
+  _log(session,status,extra={}){
+    for(const id of session.participants)this._brain(id)?.log?.('social',{status,kind:session.kind,sessionId:session.id,objectId:session.objectId,participants:[...session.participants],transcript:clone(session.transcript),...(session.kind==='gift'?{giftEvidence:clone(session.giftEvidence)}:{}),...extra});
+  }
+  _near(session){
+    const a=this._brain(session.initiatorId)?.actor,b=this._brain(session.partnerId)?.actor;if(!a||!b)return false;
+    const p=a.body.translation(),q=b.body.translation();
+    return !a.mounted&&!b.mounted&&!a.seated&&!b.seated&&!a.reclining&&!b.reclining&&flatDistance(p,q)>=1.1&&Math.hypot(p.x-q.x,p.y-q.y,p.z-q.z)<=(session.kind==='gift'?2:2.7);
+  }
+  _face(session){
+    for(const id of session.participants){const brain=this._brain(id),partner=this._brain(session.participants.find(other=>other!==id)),p=brain.actor.body.translation(),q=partner.actor.body.translation();
+      if(!brain.actor.goal)brain.actor.heading=Math.atan2(q.x-p.x,q.z-p.z);
+      brain.actor.lookPoint={x:q.x,y:q.y+(partner.actor.height||2.3)*.37,z:q.z};
+      brain.actor.speaking=session.phase==='speaking'&&session.speakerId===id&&!!session.speech?.started;
+      brain.actor.activity=session.phase==='giving'?(id===session.initiatorId?'give':'receive'):brain.actor.speaking?'speak':session.phase==='speaking'?'listen':null;
+      brain.actor.actionProgress=session.phase==='giving'?clamp(session.giftElapsed/session.giftDuration,0,1):session.phase==='speaking'?clamp(session.speech.elapsed/session.speech.duration,0,1):0;
+    }
+  }
+  _approach(session){
+    const physics=this.garden.physics,initiator=this._brain(session.initiatorId),partner=this._brain(session.partnerId);
+    for(const brain of [initiator,partner]){physics.standUp(brain.actorId);brain.actor.goal=null;brain.actor.route=null;brain.actor.speaking=false;}
+    const here=initiator.actor.body.translation(),center=partner.actor.body.translation(),gap=flatDistance(here,center);
+    const gift=session.kind==='gift';
+    if(gap>=(gift?1.55:1.6)&&gap<=(gift?1.8:2.4)&&this._near(session)&&physics.groundMoveDestination(here,initiator.actorId).clear){this._changePhase(session,gift?'giving':'generating');return;}
+    const angle=Math.atan2(here.x-center.x,here.z-center.z),candidates=[];
+    for(const radius of gift?[1.7,1.6,1.8]:[2,2.3,1.7])for(let i=0;i<16;i++){
+      const direction=angle+i*Math.PI/8,point={x:center.x+Math.sin(direction)*radius,z:center.z+Math.cos(direction)*radius};
+      if(physics.groundMoveDestination(point,initiator.actorId).clear)candidates.push({point,cost:flatDistance(point,here)+Math.abs(radius-(gift?1.7:2))});
+    }
+    candidates.sort((a,b)=>a.cost-b.cost);
+    // Bound route work, including an enclosed partner: at most six 500-node searches.
+    const destination=candidates.slice(0,6).find(({point})=>physics.planGroundRoute(initiator.actorId,point,{maxNodes:500}).ok)?.point;
+    if(!destination)throw Error('No clear reachable place to stand near the '+(gift?'gift recipient':'conversation partner'));
+    session.destination={...destination};initiator.actor.goal={...destination};this._changePhase(session,'approaching');
+  }
+  nextRequest(){
+    if(this.garden.paused||this.pauseStartedAt!==null)return null;
+    for(const session of this.sessions.values()){
+      if(!this._current(session)){this._finish(session,'canceled',this._label(session)+' participants changed');continue;}
+      if(session.request||!['invited','generating'].includes(session.phase))continue;
+      const acceptance=session.phase==='invited',brain=this._brain(acceptance?session.partnerId:session.participants[session.transcript.length]);
+      if(!brain||brain.busy||brain.dispatched)continue;
+      // Merely looking for work does not claim it; the scheduler may have a busy slot.
+      const turnIndex=session.transcript.length;
+      return {brain,kind:acceptance?'laya':'gemma',purpose:acceptance?(session.kind==='gift'?'gift acceptance':'social acceptance'):'social turn',run:()=>this._run(session,brain,acceptance,turnIndex)};
+    }
+    return null;
+  }
+  async _run(session,brain,acceptance,turnIndex){
+    const phase=acceptance?'invited':'generating';
+    if(this.garden.paused||this.pauseStartedAt!==null||!this._current(session)||session.phase!==phase||session.request||session.transcript.length!==turnIndex)return;
+    const token={},oldBusy=brain.busy,oldLabel=brain.busyLabel,label=acceptance?(session.kind==='gift'?'Considering a gift':'Considering a conversation'):'Preparing a conversation turn';session.request=token;brain.socialRequestOwner=token;brain.busy=true;brain.busyLabel=label;
+    try{
+      const partner=this._brain(session.participants.find(id=>id!==brain.actorId));
+      let generated;
+      if(acceptance){
+        // The scheduler marks this brain dispatched before run; eligibility was checked
+        // before dispatch and is checked again here without treating our own flags as work.
+        if(brain.job||brain.pendingStepEvidence||critical(brain)||brain.actor.mounted||(!['idle','complete'].includes(brain.stage)&&!(brain.goalSource==='self'&&['goal_select','action_plan'].includes(brain.stage))))throw Error((session.kind==='gift'?'Gift recipient':'Conversation partner')+' is no longer available');
+        if(session.kind==='gift'){
+          const blocker=this._giftBlocker(session);if(blocker)throw Error(blocker);
+          const info=objectInfo(this.garden,session.objectId),object=Object.fromEntries(['id','name','description','kind','position','mass','dimensions','attributes','heldBy'].map(key=>[key,info[key]]));
+          generated=await this.garden.providers.giftAcceptance(brain,publicActor(partner),{id:session.id,sessionId:session.id,object,topic:session.topic});
+        }else generated=await this.garden.providers.socialAcceptance(brain,publicActor(partner),{id:session.id,sessionId:session.id,topic:session.topic});
+      }else{
+        if(!this._near(session))throw Error('Conversation partners separated before a turn');
+        generated=await this.garden.providers.socialTurn(brain,{sessionId:session.id,partner:publicActor(partner),topic:session.topic,transcript:clone(session.transcript),world:conciseWorld(this.garden,brain)});
+      }
+      if(!this._current(session)||session.request!==token||session.phase!==phase||session.transcript.length!==turnIndex)return;
+      if(session.participants.some(id=>critical(this._brain(id))))throw Error('A participant needs urgent food or rest');
+      if(session.kind==='gift'){const blocker=this._giftBlocker(session);if(blocker)throw Error(blocker);}
+      if(!acceptance&&!this._near(session))throw Error('Conversation partners separated while preparing a turn');
+      brain.log?.('social_model',{status:'completed',source:acceptance?'laya':'gemma',kind:session.kind,sessionId:session.id,purpose:session.kind==='gift'?'gift acceptance':acceptance?'acceptance':'turn',...generated});
+      if(acceptance){
+        const choice=generated.choice??generated.response?.choice;
+        if(choice==='decline'){this._finish(session,'declined',session.kind==='gift'?brain.actorName+' declined the offered gift':partner.actorName+' invited '+brain.actorName+', who declined');return;}
+        if(choice!=='accept')throw Error(this._label(session)+' acceptance must be accept or decline');
+        session.accepted=true;this._log(session,'accepted');
+        if(this.garden.paused||this.pauseStartedAt!==null){session.needsApproach=true;this._changePhase(session,'approaching');}else this._approach(session);
+      }else{
+        const value=generated.value;if(typeof value?.speech!=='string'||!value.speech.trim()||value.speech.length>180||!Array.isArray(value.memory)||value.memory.length>2)throw Error('Invalid bounded conversation turn');
+        // Validate against this speaker's private IDs without applying an undelivered memory.
+        updateMemory({...brain,memory:clone(brain.memory)},value.memory);
+        session.speakerId=brain.actorId;session.speech={speakerId:brain.actorId,speakerName:brain.actorName,text:value.speech.trim(),duration:clamp(value.speech.trim().length/25,2,6),elapsed:0,started:false,memory:clone(value.memory)};
+        this._changePhase(session,'speaking');
+      }
+    }catch(error){
+      if(this._current(session)&&session.request===token){brain.log?.('social_model',{status:'failed',kind:session.kind,sessionId:session.id,error:error.message,diagnostics:error.diagnostics||null});this._finish(session,'canceled',this._label(session)+' could not continue: '+error.message);}
+    }finally{
+      if(session.request===token)session.request=null;
+      if(brain.socialRequestOwner===token){delete brain.socialRequestOwner;if(brain.busyLabel===label){brain.busy=oldBusy;brain.busyLabel=oldLabel;}}
+    }
+  }
+  tick(dt){
+    if(!Number.isFinite(dt)||dt<0)throw Error('Social elapsed time must be finite and nonnegative');
+    if(this.garden.paused||this.pauseStartedAt!==null)return;
+    for(const session of [...this.sessions.values()]){
+      if(!this._current(session)){this._finish(session,'canceled',this._label(session)+' participants changed');continue;}
+      if(session.participants.some(id=>critical(this._brain(id)))){this._finish(session,'canceled','A participant needs urgent food or rest');continue;}
+      if(session.kind==='gift'){const blocker=this._giftBlocker(session);if(blocker){this._finish(session,'canceled',blocker);continue;}}
+      session.elapsed+=dt;session.phaseElapsed+=dt;
+      if(session.elapsed>600||session.phaseElapsed>240||Date.now()-session.phaseStartedAt>300000){this._finish(session,'canceled',this._label(session)+' timed out');continue;}
+      if(session.phase==='waiting'){
+        if(session.phaseElapsed>=45){this._finish(session,'canceled','The '+(session.kind==='gift'?'gift recipient':'conversation partner')+' did not become available within 45 seconds');continue;}
+        const partner=this._brain(session.partnerId);
+        if(this._partnerFree(partner)){
+          // No await occurs between checking readiness, capturing the current work
+          // revision, and holding the pair for its actual Laya invitation.
+          this.waiters.delete(session.partnerId);this.members.set(session.partnerId,session.id);session.heldParticipants.push(session.partnerId);
+          session.revisions[session.partnerId]=partner.revision;session.cycles[session.partnerId]=partner.cycle;this._changePhase(session,'invited');this._log(session,'invited');
+        }
+        this._brain(session.initiatorId).actor.speaking=false;continue;
+      }
+      if(session.phase==='invited'){for(const id of session.participants)this._brain(id).actor.speaking=false;continue;}
+      if(session.needsApproach){
+        session.needsApproach=false;
+        try{this._approach(session);}catch(error){this._finish(session,'canceled',this._label(session)+' could not continue: '+error.message);continue;}
+      }
+      if(session.phase==='approaching'){
+        const actor=this._brain(session.initiatorId).actor;
+        if(flatDistance(actor.body.translation(),session.destination)<.2&&this._near(session)){actor.goal=null;actor.route=null;this._changePhase(session,session.kind==='gift'?'giving':'generating');}
+        else if(session.phaseElapsed>35||actor.route?.status==='blocked'&&actor.route.replans>=3){this._finish(session,'canceled','Could not reach the '+(session.kind==='gift'?'gift recipient':'conversation partner'));continue;}
+      }else if(!this._near(session)){this._finish(session,'canceled',session.kind==='gift'?'Gift giver and recipient separated':'Conversation partners separated');continue;}
+      if(session.phase==='giving'){this._tickGift(session,dt);if(!this.sessions.has(session.id))continue;}
+      if(session.phase==='speaking'){
+        const speech=session.speech,speaker=this._brain(session.speakerId);
+        if(!speech.started){speech.started=true;speech.startedAt=this.garden.time||0;speaker.thought={text:speech.text,speech:speech.text,time:speaker.time,duration:speech.duration,sessionId:session.id};}
+        const elapsed=Math.min(dt,speech.duration-speech.elapsed);speech.elapsed+=elapsed;
+        for(const id of session.participants)session.participation[id]+=elapsed;
+        if(speech.elapsed+1e-8>=speech.duration){
+          try{updateMemory(speaker,speech.memory);}catch(error){this._finish(session,'canceled','Delivered conversation memory was invalid: '+error.message);continue;}
+          session.transcript.push({speakerId:speech.speakerId,speakerName:speech.speakerName,text:speech.text,deliveredAt:this.garden.time||0,duration:speech.duration});
+          this._log(session,'delivered',{speakerId:speech.speakerId,text:speech.text,duration:speech.duration});session.speech=null;session.speakerId=null;
+          if(session.transcript.length===2){this._complete(session);continue;}
+          this._changePhase(session,'generating');
+        }
+      }
+      this._face(session);
+    }
+  }
+  _objectState(id){const object=this.garden.physics.entities.get(id);return object?{owner:object.owner||null,carrier:object.carrier||null,carried:!!object.carried,position:{...this.garden.physics.position(object)}}:null;}
+  _giftBlocker(session){
+    const object=this.garden.physics.entities.get(session.objectId);
+    if(!object)return 'The offered object no longer exists';
+    if(session.transferred)return object.carried&&object.carrier===session.partnerId&&object.owner===session.partnerId?null:'The gift was transferred, but the recipient no longer holds it';
+    if(!object.carried||object.carrier!==session.initiatorId)return 'The giver no longer holds the offered object';
+    try{const blocked=liftingBlocker(object);if(blocked)return blocked;if(!attributesFor(object).giftable)return 'This object cannot be given';}catch(error){return error.message;}
+    // Eating and other self-directed jobs may hold an object temporarily. Let that
+    // work and its audit finish while queued; consent and contact still need free hands.
+    if(!this._emptyHands(session.partnerId)&&!(session.phase==='waiting'&&this._canWaitForFreeHands(this._brain(session.partnerId))))return 'The gift recipient now has occupied hands';
+    return null;
+  }
+  _recordGift(session,status,reason=null){
+    const evidence=freeze({sessionId:session.id,kind:'gift',objectId:session.objectId,giverId:session.initiatorId,recipientId:session.partnerId,participants:[...session.participants],accepted:session.accepted,transferred:session.transferred,transferCount:session.transferCount,transferredAt:session.transferredAt,before:clone(session.giftBefore||null),after:clone(session.giftAfter||null),giverPosition:clone(session.giverPosition||null),recipientPosition:clone(session.recipientPosition||null),distanceAtTransfer:session.distanceAtTransfer??null,gesture:{duration:session.giftDuration,elapsed:session.giftElapsed,completed:session.giftElapsed>=session.giftDuration},status,reason});
+    session.giftEvidence=evidence;
+    const initiator=this._brain(session.initiatorId);if(initiator?.job===session.initiatorJob&&initiator?.job?.action==='give'&&initiator.cycle===session.cycles[session.initiatorId])initiator.job.giftEvidence=evidence;
+    return evidence;
+  }
+  _tickGift(session,dt){
+    session.giftElapsed=Math.min(session.giftDuration,session.giftElapsed+dt);
+    if(!session.transferred&&session.giftElapsed>=session.giftDuration*.52){
+      const giver=this._brain(session.initiatorId),recipient=this._brain(session.partnerId);
+      session.giftBefore=this._objectState(session.objectId);session.giverPosition={...giver.actor.body.translation()};session.recipientPosition={...recipient.actor.body.translation()};session.distanceAtTransfer=Math.hypot(session.giverPosition.x-session.recipientPosition.x,session.giverPosition.y-session.recipientPosition.y,session.giverPosition.z-session.recipientPosition.z);
+      let failure=null;try{this.garden.physics.giftObject(session.objectId,session.initiatorId,session.partnerId);}catch(error){failure=error;}
+      // Capture actual state even if a primitive failed after changing the object.
+      // Cancellation can never erase, replay or roll back a completed transfer.
+      session.giftAfter=this._objectState(session.objectId);session.transferred=!!(session.giftAfter?.carried&&session.giftAfter.carrier===session.partnerId&&session.giftAfter.owner===session.partnerId);
+      if(session.transferred){session.transferCount=1;session.transferredAt=this.garden.time||0;session.effectsApplied=true;this._recordGift(session,'transferred');this._log(session,'transferred');}
+      if(failure||!session.transferred){this._finish(session,'canceled',failure?.message||'The physical handoff did not transfer the object');return;}
+    }
+    if(session.giftElapsed>=session.giftDuration)this._finish(session,'complete','Gave '+(this.garden.physics.entities.get(session.objectId)?.design?.name||session.objectId)+' to '+this._brain(session.partnerId).actorName+' after consent and a physical handoff');
+  }
+  _complete(session){
+    if(!this._current(session)||session.effectsApplied||session.transcript.length!==2||!this._near(session))return;
+    const seconds=Math.min(10,...session.participants.map(id=>session.participation[id]));
+    if(seconds<=0||session.participants.some(id=>!session.transcript.some(turn=>turn.speakerId===id))){this._finish(session,'canceled','Conversation delivery evidence was incomplete');return;}
+    const updates=session.participants.map(id=>{const brain=this._brain(id),before=lifeNeeds(brain.needs),after={...before,social:clamp(before.social+4*seconds,0,100),fun:clamp(before.fun+.6*seconds,0,100)};return {brain,before,after};});
+    session.needChanges=Object.fromEntries(updates.map(({brain,before,after})=>[brain.actorId,{before,after,delta:{social:after.social-before.social,fun:after.fun-before.fun},seconds}]));
+    // Both effects commit synchronously once, after both verified nearby intervals.
+    session.effectsApplied=true;for(const {brain,after}of updates)brain.needs=after;
+    this._finish(session,'complete','Completed a two-way conversation between '+updates.map(({brain})=>brain.actorName).join(' and '));
+  }
+  _finish(session,phase,reason){
+    if(this.sessions.get(session.id)!==session||terminal.has(session.phase))return;
+    if(session.kind==='gift'&&session.transferred&&phase!=='complete')reason+='; the object was already transferred to '+(this._brain(session.partnerId)?.actorName||session.partnerId)+' before the gesture was interrupted';
+    const initiator=this._brain(session.initiatorId),sameJob=initiator?.job===session.initiatorJob&&initiator?.job?.action===(session.kind==='gift'?'give':'socialize')&&initiator.cycle===session.cycles[session.initiatorId];
+    // A revision bump can invalidate evidence without replacing the running job.
+    // Fail that exact old job rather than leave it stranded in socializing.
+    const canFinish=sameJob&&(initiator.revision===session.revisions[session.initiatorId]||phase!=='complete'&&['socializing','gifting'].includes(initiator.stage));
+    this._changePhase(session,phase);session.reason=phase==='complete'?null:reason;session.outcome=reason;session.speech=null;session.speakerId=null;
+    if(session.kind==='gift')this._recordGift(session,phase==='complete'?'completed':phase,session.reason);
+    if(this.waiters.get(session.partnerId)===session.id)this.waiters.delete(session.partnerId);
+    for(const id of session.participants){
+      if(this.members.get(id)===session.id){this.members.delete(id);const brain=this._brain(id),actor=brain?.actor||this.garden.physics.entities.get(id);if(actor&&(!brain||brain.revision===session.revisions[id]&&brain.cycle===session.cycles[id]||id===session.initiatorId&&canFinish)){actor.goal=null;actor.route=null;actor.activity=null;actor.actionProgress=0;actor.speaking=false;actor.lookPoint=null;}}
+    }
+    this.sessions.delete(session.id);this.history.push(this._dto(session));this.history=this.history.slice(-32);
+    this._log(session,phase==='complete'?'completed':phase,{outcome:reason,participation:clone(session.participation),needChanges:clone(session.needChanges),effectsApplied:session.effectsApplied});
+    if(canFinish){
+      if(session.kind!=='gift')initiator.job.socialEvidence=freeze({sessionId:session.id,participants:[...session.participants],accepted:session.accepted,transcript:clone(session.transcript),participation:clone(session.participation),needChanges:clone(session.needChanges),effectsApplied:session.effectsApplied,status:phase==='complete'?'completed':phase,reason:session.reason});
+      initiator.actionDone(phase==='complete',reason);
+    }
+  }
+  cancelActor(id,reason=null){const session=this.forActor(id)||this.waitingForActor(id);if(!session)return false;this._finish(session,'canceled',reason||this._label(session)+' canceled');return true;}
+  _dto(session){
+    const dto=Object.fromEntries(['id','kind','objectId','initiatorId','partnerId','participants','heldParticipants','phase','revisions','cycles','createdAt','elapsed','topic','transcript','participation','effectsApplied','needChanges','outcome','reason','accepted','destination','speakerId','giftDuration','giftElapsed','transferred','transferCount','transferredAt','giftEvidence'].map(key=>[key,clone(session[key])]));
+    dto.speech=session.speech?Object.fromEntries(['speakerId','speakerName','text','duration','elapsed','started'].map(key=>[key,session.speech[key]])):null;return dto;
+  }
+  snapshot(){return {version:1,nextId:this.nextId,active:[...this.sessions.values()].map(session=>this._dto(session)),history:clone(this.history)};}
+  restore(data){
+    this.sessions.clear();this.members.clear();this.waiters.clear();this.history=[];this.pauseStartedAt=null;this.nextId=Math.max(1,Number.isSafeInteger(data?.nextId)?data.nextId:1);
+    const canceledParticipantIds=new Set(),canceledSessionIds=[],seen=new Set();
+    for(const saved of [...(data?.history||[]),...(data?.active||[])]){
+      if(!saved?.id||seen.has(saved.id)||!Array.isArray(saved.participants))continue;seen.add(saved.id);
+      const session=clone(saved);this.nextId=Math.max(this.nextId,(Number(session.id.replace(/^social-/,''))||0)+1);
+      if(!terminal.has(session.phase)){
+        const held=session.heldParticipants||(session.phase==='waiting'?[session.initiatorId]:session.participants);
+        session.phase='canceled';session.reason=session.kind==='gift'?(session.transferred?'Gift was transferred before reload; the remaining gesture was interrupted':'Gift handoff interrupted by reload'):'Conversation interrupted by reload';session.outcome=session.reason;session.effectsApplied=session.kind==='gift'&&!!session.transferred;session.needChanges=null;session.speech=null;session.speakerId=null;canceledSessionIds.push(session.id);
+        if(session.kind==='gift'&&session.giftEvidence)session.giftEvidence={...session.giftEvidence,status:'canceled',reason:session.reason,gesture:{...session.giftEvidence.gesture,elapsed:session.giftElapsed,completed:session.giftElapsed>=session.giftDuration}};
+        for(const id of held){canceledParticipantIds.add(id);const actor=this._brain(id)?.actor;if(actor){actor.goal=null;actor.route=null;actor.activity=null;actor.speaking=false;actor.actionProgress=0;actor.lookPoint=null;}}
+      }
+      this.history.push(session);
+    }
+    this.history=this.history.slice(-32);return {canceledParticipantIds:[...canceledParticipantIds],canceledSessionIds};
+  }
+}

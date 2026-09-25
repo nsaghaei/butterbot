@@ -24,7 +24,7 @@ test('two robots expose real social partners, distinct traits, and private memor
     b.needs.social=20;assert.ok(goalCandidates(b).some(goal=>goal.id==='socialize'&&goal.steps[0].target==='pip'));
     b.assign('Chat with Pip about the garden.');b.planSteps=[{action:'socialize',target:'pip',label:'Chat with Pip about the garden'}];b.stage='action_decide';
     const context=buildDecisionContext(b),fit=await fitDecisionContext(context,'Which next action advances this goal?',{a:'Chat with Pip',b:'Ask for help'});
-    assert.ok(fit.state.includes('pip Pip'));assert.ok(fit.tokenBudget.stateTokens<=362);assert.ok(!JSON.stringify(context).includes('private-pip'));
+    assert.ok(fit.state.includes('pip Pip'));assert.equal(fit.tokenBudget.stateLimit,511-fit.tokenBudget.headerTokens);assert.ok(fit.tokenBudget.stateTokens<=fit.tokenBudget.stateLimit);assert.ok(fit.tokenBudget.stateTokens+fit.tokenBudget.headerTokens<512);assert.ok(!JSON.stringify(context).includes('private-pip'));
     const state=g.snapshot();assert.equal(state.actors.length,2);assert.equal(state.characters.length,2);assert.equal(state.cast,'duo');assert.equal(g.save().cast,'duo');
   }finally{g.physics.dispose();}
 });

@@ -3,10 +3,36 @@ import {readFile} from 'node:fs/promises';
 import test from 'node:test';
 import * as THREE from 'three';
 import {Physics} from '../physics.mjs';
+import {compileDesign} from '../design.mjs';
 const threeURL=import.meta.resolve('three');
 const source=(await readFile(new URL('../web-next/avatars.js',import.meta.url),'utf8')).replace("'/three.js'",JSON.stringify(threeURL));
 const {avatar,updateAvatar}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const mesh=(geometry,color,parent,position=[0,0,0])=>{const object=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({color}));object.position.set(...position);parent.add(object);return object;};
+test('a held orange stays within the robot palms while listening, speaking, thinking and walking',async()=>{
+  const design=await compileDesign({name:'Orange',description:'A small carryable orange.',kind:'prop',mass:.15,affordances:['display'],attributes:{portable:true,giftable:true},code:'const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.SphereGeometry(.105,12,8),new THREE.MeshBasicMaterial({color:0xffaa22})));return g;'});
+  const p=new Physics(),model=avatar('pip',{mesh}),pip=p.character('pip',{x:2,y:1.2,z:4});
+  try{
+    const object=p.add(design,{x:2,y:.3,z:4.4});p.carry(object.id,'pip');
+    let previous=p.snapshot().find(e=>e.id==='pip'),contacts=0;
+    for(const heading of [0,Math.PI/2,-2.1])for(const activity of [null,'listen','speak','think','move']){
+      const start={...pip.body.translation()};pip.heading=heading;pip.activity=activity;pip.speaking=activity==='speak';pip.goal=activity==='move'?{x:start.x+Math.sin(heading)*.6,z:start.z+Math.cos(heading)*.6}:null;
+      for(let i=0;i<20;i++)p.step();
+      const state=p.snapshot(),e=state.find(e=>e.id==='pip'),item=state.find(e=>e.id===object.id);
+      assert.equal(e.heldObject.id,object.id);assert.deepEqual(e.heldObject.position,{...item.position});
+      assert.equal(state.find(e=>e.id==='actor').heldObject,null,'the other robot must not support this object');
+      if(activity==='move')assert.ok(Math.hypot(e.position.x-start.x,e.position.z-start.z)>.1,'check the carrying pose during actual walking');
+      // Interpolation must use the same previous/current object transform as rendering.
+      updateAvatar(model,e,previous,1);model.updateMatrixWorld(true);
+      for(const chain of Object.values(model.userData.human.arms)){
+        const palm=chain.end.localToWorld(new THREE.Vector3(0,-.085,0)),center=new THREE.Vector3(item.position.x,item.position.y,item.position.z);
+        assert.ok(palm.distanceTo(center)<.145,`${activity||'idle'} palm gap ${palm.distanceTo(center).toFixed(3)}m`);
+        contacts++;
+      }
+      previous=e;
+    }
+    assert.equal(contacts,30);p.release(object.id);assert.equal(p.snapshot().find(e=>e.id==='pip').heldObject,null);
+  }finally{p.dispose();}
+});
 test('Butterbot and Pip have independent connected bodies and visibly distinct palettes during conversation',()=>{
   const butter=avatar('actor',{mesh}),pip=avatar('pip',{mesh}),base={position:{x:0,y:.95,z:0},heading:0,actionProgress:.5};
   assert.notEqual(butter.userData.palette.shell,pip.userData.palette.shell);assert.notEqual(butter.userData.palette.teal,pip.userData.palette.teal);assert.notEqual(butter.userData.parts.head,pip.userData.parts.head);
