@@ -38,6 +38,7 @@
 !/outputs/maker/releases/v26/
 !/outputs/maker/releases/v27/
 !/outputs/maker/releases/v28/
+!/outputs/maker/releases/v29/
 
 # Keep reproducible build scripts, not downloads, scratch patches or model files.
 /work/*

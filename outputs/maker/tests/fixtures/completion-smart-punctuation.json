@@ -1,0 +1,14 @@
+{
+  "sourceRecordId": "pip-record-197",
+  "request": {
+    "id": "pip-record-197",
+    "question": "Judge only the current plan step, not the whole objective. Should Gemma confirm or examine its recorded outcome?",
+    "choices": {
+      "done": "Done with this step — ask Gemma to verify",
+      "check": "Ask Gemma to check this step’s outcome"
+    },
+    "variants": [
+      "Current step 1/2: give item-6 recipient=actor. You are Pip. Objective (user): Give the Small Edible Orange to Butterbot, then chat with Butterbot about the gift. Personality: playful, gentle, observant. Interests: play,company. Needs: energy 66, fun 21, hunger 23, hygiene 33, social 99, comfort 51. Body: 2.3m,65kg. At (0,1.2,2.1), standing. Held: none; tokens 3. Stage awaiting_step_done. Plan: 1 now:give;2 later:socialize. Engine completed current step: Gave Small Edible Orange to Butterbot after consent and a physical handoff. Verify before advancing. Objects (id name xyz): printer Idea printer (-11.4,1,0);planter Flower bed (6,0.5,-7);item-1 Orange Tulip (1.4,0.2,0.7);home-bed Garden daybed (6,0.6,5);garden-shower Garden shower (7,1.4,-3);park-bench Park bench (2,0.6,-5);snack-bowl Bowl of oranges (2.1,0.2,1.4);item-6 Small Edible Orange (-0.8,1.4,2.5) 0.15kg/size=0.21x0.252x0.215m/display/portable/anchored=false/edible/throwable/maxThrowSpeed=5/giftable/pushable/servings=1. People: actor Butterbot (-1.5,1.2,2.9) cannot receive gift. Printer: free. Choose an offered option for the current step."
+    ]
+  }
+}
