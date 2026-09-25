@@ -17,7 +17,7 @@ function brain(){
 }
 const partner=()=>({id:'actor',name:'Butterbot',style:'inventive, curious',position:{x:2,y:1.185,z:2},conversational:true,socialAvailable:true,socialReady:true,held:[],memory:[{id:'actor-memory-1',text:'BUTTERBOT_PRIVATE_ORANGE_CODE'}],objective:'BUTTERBOT_PRIVATE_OBJECTIVE'});
 function session(b,extra={}){
-  const peer=partner();return {sessionId:'chat-1',partner:peer,topic:'gentle games among the garden flowers',transcript:[{speakerId:'actor',speakerName:'Butterbot',text:'Would you enjoy a quiet game by the flowers?',deliveredAt:12,duration:3}],world:{actor:{id:b.actorId,position:b.actor.body.translation(),needs:b.needs,inventory:[]},objects:buildDecisionContext(b).snapshot.objects,characters:[peer],printer:{owner:null,queue:[]},recentOutcomes:['Observed the nearby garden objects.']},...extra};
+  const peer=partner();return {sessionId:'chat-1',partner:peer,topic:'gentle games among the garden flowers',topicInitiator:{id:peer.id,name:peer.name},transcript:[{speakerId:'actor',speakerName:'Butterbot',text:'Would you enjoy a quiet game by the flowers?',deliveredAt:12,duration:3}],world:{actor:{id:b.actorId,position:b.actor.body.translation(),needs:b.needs,inventory:[]},objects:buildDecisionContext(b).snapshot.objects,characters:[peer],printer:{owner:null,queue:[]},recentOutcomes:['Observed the nearby garden objects.']},...extra};
 }
 
 test('social turn uses the speaker full private store and only public partner facts plus delivered dialogue',async()=>{
@@ -54,6 +54,58 @@ test('social context rejects undelivered or nonparticipant dialogue and another 
   const b=brain(),p=new Providers();let calls=0;p.generate=async()=>{calls++;return {value:{speech:'Hello.',memory:[]}};};
   for(const transcript of [[{speakerId:'actor',text:'Pending words'}],[{speakerId:'actor',text:'Pending words',deliveredAt:2,status:'pending'}],[{speakerId:'other',text:'An invented bystander',deliveredAt:2}],[{speakerId:'actor',text:'Words',deliveredAt:2,delivered:false}]])await assert.rejects(p.socialTurn(b,session(b,{transcript})),/actual delivered participant speech/);
   const wrong=session(b);wrong.world.actor.id='actor';await assert.rejects(p.socialTurn(b,wrong),/world must belong to the speaking character/);assert.equal(calls,0);
+});
+
+test('the orange recipient sees its own perspective and the unchanged topic addressed to the giver',async()=>{
+  const b=brain(),p=new Providers(),topic='Reflect on the orange you just gave to Pip.';
+  const legacyMemory={id:'pip-memory-6',kind:'experience',text:'The act of sharing the orange with Pip created a moment of genuine connection and warmth in the garden.'};
+  b.memory[5]={...b.memory[5],...legacyMemory};
+  const input=session(b,{topic,topicInitiator:{...partner(),privatePlan:'INITIATOR_PRIVATE_PLAN'},transcript:[{speakerId:'actor',text:'Sharing that small orange felt like a lovely way to bring warmth to our afternoon.',deliveredAt:5366.8,duration:5.84}]});
+  input.world.actor.inventory=['item-6'];input.world.objects.push({id:'item-6',name:'Small Edible Orange',position:{x:1,y:1.4,z:2},owner:'pip',heldBy:'pip',mass:.15,edible:true,servings:1});
+  const before=structuredClone(b.memory);
+  const value={speech:'Thank you for the orange. I am enjoying this quiet moment.',memory:[]};
+  p.generate=async()=>({value,raw:JSON.stringify(value)});
+  const result=await p.socialTurn(b,input);
+  assert.equal(result.input.topic,topic);assert.deepEqual(result.input.topicInitiator,{id:'actor',name:'Butterbot'});
+  assert.match(result.prompt,/^Current speaker: Pip \(pip\)/);assert.match(result.prompt,/Conversation partner: Butterbot \(actor\)/);assert.match(result.prompt,/Original topic addressee: Butterbot \(actor\)/);
+  assert.ok(result.prompt.indexOf('Original topic addressee:')<result.prompt.indexOf('full editable memory store:'));
+  assert.match(result.prompt,/second-person wording in the TOPIC addresses that actor/);assert.match(result.prompt,/attribution identifies perspective, not proof/);
+  assert.match(result.prompt,/Form new memories from the current speaker's own perspective/);assert.match(result.prompt,/identities of giver, recipient and speaker distinct/);
+  assert.equal(result.input.world.objects.find(o=>o.id==='item-6').heldBy,'pip');assert.deepEqual(result.input.world.actor.inventory,['item-6']);
+  assert.ok(result.input.memory.some(m=>m.id===legacyMemory.id&&m.text===legacyMemory.text));assert.deepEqual(b.memory,before,'Existing memories remain available for model curation, without automatic correction');
+  assert.deepEqual(result.value,value,'Perspective guidance does not replace model-generated dialogue');assert.doesNotMatch(JSON.stringify(result),/BUTTERBOT_PRIVATE|INITIATOR_PRIVATE_PLAN|actor-memory-1/);
+});
+
+test('conversation generation requires public participant topic provenance and never guesses the addressee',async()=>{
+  const b=brain(),p=new Providers();let calls=0;p.generate=async()=>{calls++;return {value:{speech:'Hello.',memory:[]}};};
+  for(const topicInitiator of [undefined,null,{id:'someone-else',name:'Stranger'},{id:'actor',name:''}])await assert.rejects(p.socialTurn(b,session(b,{topicInitiator})),/topic initiator/);
+  assert.equal(calls,0);
+  const input=session(b,{topic:'Describe what you noticed here.',topicInitiator:{id:'pip',name:'Pip'}});
+  const result=await p.socialTurn(b,input);assert.equal(calls,1);assert.match(result.prompt,/Original topic addressee: Pip \(pip\)/);assert.equal(result.input.topic,input.topic);
+});
+
+test('ambiguous delivered speech stays distinct from a similarly named historical object and reversed gift event',async()=>{
+  const b=brain(),p=new Providers();
+  b.memory=[{id:'pip-memory-2',kind:'experience',text:'I gave the Blue Glass Vase to Butterbot yesterday.'}];
+  const input=session(b,{topic:'Discuss the blue glass you gave to Pip.',transcript:[{speakerId:'actor',text:'Sharing that blue glass was a lovely moment.',deliveredAt:18,duration:2}]});
+  input.world.objects=[{id:'old-vase',name:'Blue Glass Vase',owner:'actor',heldBy:null},{id:'new-bottle',name:'Blue Glass Bottle',owner:'pip',heldBy:'pip'}];input.world.actor.inventory=['new-bottle'];
+  const before=structuredClone(b.memory),value={speech:'Thank you. It is a beautiful color.',memory:[{operation:'remember',id:'',text:'Butterbot described sharing blue glass as lovely; the specific object was not named.',kind:'belief'}]};
+  p.generate=async()=>({value,raw:JSON.stringify(value)});const result=await p.socialTurn(b,input);
+  assert.deepEqual(result.input.memory,before.map(({id,kind,text})=>({id,kind,text})));assert.deepEqual(result.input.world.objects,input.world.objects);assert.deepEqual(result.input.transcript,input.transcript);
+  assert.match(result.prompt,/Different object IDs identify different objects/);assert.match(result.prompt,/Delivered speech may concern a different event or object/);
+  assert.match(result.prompt,/require evidence linking the same object, participants, giver\/recipient direction and event/);assert.match(result.prompt,/current ownership or a vague reference alone is not that link/);
+  assert.match(result.prompt,/leave the historical event unchanged/);assert.match(result.prompt,/explicitly attributed statement with its uncertainty/);assert.match(result.prompt,/Never merge separate events merely to avoid adding a memory/);
+  assert.ok(result.prompt.indexOf('Keep event and object identities separate.')<result.prompt.indexOf('full editable memory store:'));
+  assert.deepEqual(result.value,value);assert.deepEqual(b.memory,before);
+});
+
+test('failed social generation retains raw output, capacity and finish diagnostics alongside its exact private input',async()=>{
+  const b=brain(),p=new Providers(),input=session(b),before=structuredClone(b.memory),raw='{"speech":"A partial reply',previous=globalThis.fetch;let request;p.provider='ollama';
+  globalThis.fetch=async(_url,options)=>{request=JSON.parse(options.body);return {ok:true,status:200,json:async()=>({model:'test-social-gemma',message:{content:raw},done:true,done_reason:'length',prompt_eval_count:7992,eval_count:200,prompt_eval_duration:100000000,eval_duration:300000000})};};
+  try{
+    await assert.rejects(p.socialTurn(b,input),error=>{const d=error.diagnostics;assert.equal(d.raw,raw);assert.equal(d.rawLength,raw.length);assert.equal(d.rawTruncated,false);assert.equal(d.finishReason,'length');assert.equal(d.maxOutputTokens,500);assert.equal(d.contextTokens,8192);assert.equal(d.usage.promptTokens,7992);assert.equal(d.usage.outputTokens,200);assert.equal(d.timing.computeMs,400);assert.equal(d.parseError.name,'SyntaxError');assert.equal(d.generationError.message,error.message);assert.equal(d.responseMetadata.done_reason,'length');assert.equal(d.prompt,request.messages[1].content);assert.deepEqual(d.schema,request.format);assert.deepEqual(d.input.memory,before.map(({id,kind,text})=>({id,kind,text})));assert.deepEqual(d.input.topicInitiator,input.topicInitiator);assert.doesNotMatch(JSON.stringify(d),/BUTTERBOT_PRIVATE|actor-memory-1/);return true;});
+    assert.deepEqual(b.memory,before);assert.deepEqual(p.activeRequests,{});assert.equal(p.generatorAbort,null);
+  }finally{globalThis.fetch=previous;}
 });
 
 test('a furnished recipient invitation fits the actual Laya tokenizer and logs every choice and probability',async()=>{

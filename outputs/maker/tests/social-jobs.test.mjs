@@ -46,6 +46,7 @@ test('declining releases both participants with evidence and no movement, delive
 
 test('two real characters walk, face each other, deliver sequential private turns, and recover needs exactly once after both turns',async()=>{
   const f=fixture();try{
+    const topic='Reflect on the orange you just gave to Pip.',origin={id:'actor',name:'Butterbot'};f.a.objective=topic;
     f.a.memory=[{id:'a-secret',kind:'belief',text:'My private blue preference.',accessTick:1}];f.b.memory=[{id:'b-secret',kind:'belief',text:'My private yellow preference.',accessTick:1}];
     const start={...f.a.actor.body.translation()},s=begin(f);await f.social.nextRequest().run();assert.equal(s.phase,'approaching');assert.deepEqual({...f.a.actor.body.translation()},start);
     const walked=approach(f);assert.ok(walked.frames>1);assert.ok(walked.maxStep<.075);assert.equal(s.phase,'generating');assert.ok(distance(f.a.actor.body.translation(),f.b.actor.body.translation())>=1.6);assert.equal(f.a.actor.goal,null);
@@ -56,8 +57,10 @@ test('two real characters walk, face each other, deliver sequential private turn
     tick(f,s.speech.duration/2);assert.equal(s.transcript.length,1);assert.equal(f.a.memory.length,2);assert.equal(f.b.memory.length,1);assert.equal(s.effectsApplied,false);await first.run();assert.equal(f.calls.turns.length,1);
     tick(f,20);assert.deepEqual([f.a.needs,f.b.needs],before);await deliver(f);
     assert.deepEqual(f.calls.turns.map(c=>c.id),['actor','pip']);assert.equal(f.calls.turns[1].context.transcript.length,1);assert.equal(f.calls.turns[1].context.transcript[0].speakerId,'actor');assert.equal(f.calls.turns[1].context.world.actor.id,'pip');assert.equal(f.b.memory.length,2);
+    for(const call of f.calls.turns){assert.equal(call.context.topic,topic);assert.deepEqual(call.context.topicInitiator,origin);assert.notEqual(call.context.topicInitiator,s.topicInitiator,'Each provider call receives a detached public attribution');assert.deepEqual(Object.keys(call.context.topicInitiator).sort(),['id','name']);}
     assert.equal(f.social.forActor('actor'),null);assert.equal(f.social.forActor('pip'),null);assert.equal(f.a.stage,'awaiting_step_done');assert.equal(f.a.planIndex,0);
     const record=f.social.snapshot().history[0],evidence=f.a.pendingStepEvidence.job.socialEvidence;assert.equal(record.phase,'complete');assert.equal(record.effectsApplied,true);assert.equal(evidence.status,'completed');assert.equal(evidence.accepted,true);assert.equal(evidence.transcript.length,2);assert.ok(Object.isFrozen(s.initiatorJob.socialEvidence));assert.deepEqual(evidence,s.initiatorJob.socialEvidence);assert.equal(record.participation.actor,record.participation.pip);assert.ok(record.participation.actor>=4);
+    assert.equal(record.topic,topic);assert.deepEqual(record.topicInitiator,origin);
     for(const brain of [f.a,f.b]){const change=record.needChanges[brain.actorId];assert.equal(brain.needs.social,change.after.social);assert.equal(change.delta.social,change.seconds*4);assert.equal(brain.actor.speaking,false);assert.equal(brain.actor.goal,null);}
     const after=structuredClone([f.a.needs,f.b.needs]);tick(f,100);assert.equal(f.social.nextRequest(),null);f.social.cancelActor('actor');assert.deepEqual([f.a.needs,f.b.needs],after);assert.equal(f.a.logs.filter(l=>l.type==='action_outcome'&&l.action==='socialize'&&l.status==='completed').length,1);
   }finally{f.close();}
@@ -110,10 +113,14 @@ test('saved active conversations restore canceled, and completed history never r
   const f=fixture();try{
     await accept(f);await f.social.nextRequest().run();tick(f,.5);const partial=f.social.snapshot(),before=structuredClone([f.a.needs,f.b.needs]),restored=new SocialSessions(f.garden),result=restored.restore(partial);
     assert.deepEqual(result.canceledParticipantIds,['actor','pip']);assert.equal(result.canceledSessionIds.length,1);assert.equal(restored.snapshot().active.length,0);assert.equal(restored.snapshot().history[0].phase,'canceled');assert.equal(restored.nextRequest(),null);assert.deepEqual([f.a.needs,f.b.needs],before);assert.equal(f.a.actor.speaking,false);assert.equal(f.a.memory.length,0);
+    assert.deepEqual(partial.active[0].topicInitiator,{id:'actor',name:'Butterbot'});assert.deepEqual(restored.snapshot().history[0].topicInitiator,partial.active[0].topicInitiator);assert.equal(restored.snapshot().history[0].topic,partial.active[0].topic);
   }finally{f.close();}
   const done=fixture();try{
     await complete(done);const snapshot=done.social.snapshot(),before=structuredClone([done.a.needs,done.b.needs]),restored=new SocialSessions(done.garden);
+    done.a.actorName='A later display name';
     restored.restore(snapshot);restored.restore(snapshot);restored.tick(50);assert.deepEqual([done.a.needs,done.b.needs],before);assert.deepEqual(restored.snapshot().history,snapshot.history);assert.equal(restored.snapshot().active.length,0);assert.equal(restored.snapshot().history[0].effectsApplied,true);
+    assert.deepEqual(restored.snapshot().history[0].topicInitiator,{id:'actor',name:'Butterbot'},'Historical attribution keeps its original name after a later rename');
+    const legacy=structuredClone(snapshot);delete legacy.history[0].topicInitiator;restored.restore(legacy);assert.deepEqual(restored.snapshot().history,legacy.history,'Older history stays readable without inventing a historical display name');assert.equal(restored.snapshot().history[0].initiatorId,'actor');
   }finally{done.close();}
 });
 
