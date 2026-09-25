@@ -7,6 +7,23 @@ const promptJSON=(prompt,label)=>JSON.parse(prompt.split('\n').find(line=>line.s
 const compact=entries=>entries.map(({id,kind,text})=>({id,kind,text}));
 const capture=()=>{const provider=new Providers();let request;provider.generate=async(system,prompt,schema,maxTokens)=>{request={system,prompt,schema,maxTokens};return {value:{thought:'I can keep useful observations without repeating them.',speech:'',memory:[],proposedActions:[]}};};return {provider,request:()=>request};};
 
+test('reflection generation can revise or forget only IDs in its complete current memory store',async()=>{
+  const memory=[{id:'actor-memory-8',kind:'experience',text:'I held the tulip.'},{id:'actor-memory-19',kind:'preference',text:'I enjoy orange flowers.'}],mock=capture();
+  await mock.provider.reflect({memory,recalledMemory:[memory[0]]},{actor:{id:'actor'}},'Review a failed print');
+  const schema=mock.request().schema,variants=schema.properties.memory.items.anyOf;
+  const operation=name=>variants.find(v=>v.properties.operation.enum.includes(name));
+  for(const name of ['revise','forget'])assert.deepEqual(operation(name).properties.id.enum,memory.map(m=>m.id),'unrecalled current memories stay editable, invented or other-character IDs do not');
+  assert.deepEqual(operation('remember').properties.id.enum,['']);assert.deepEqual(operation('forget').properties.text.enum,['']);assert.equal(operation('remember').properties.text.maxLength,160);assert.equal(schema.properties.memory.maxItems,3);
+  assert.ok(!operation('revise').properties.id.enum.includes('actor-memory-20'));assert.ok(!operation('forget').properties.id.enum.includes('pip-memory-8'));
+  const brain={actorId:'actor',time:1,memory:structuredClone(memory),memorySerial:19};updateMemory(brain,[{operation:'revise',id:'actor-memory-19',kind:'preference',text:'I enjoy orange flowers in the garden.'}]);assert.equal(brain.memory[1].text,'I enjoy orange flowers in the garden.');
+});
+
+test('empty-store reflections cannot generate revise or forget operations',async()=>{
+  const mock=capture();await mock.provider.reflect({memory:[],recalledMemory:[{id:'removed-id',text:'Old recollection'}]},{actor:{id:'actor'}},'First reflection');
+  const variants=mock.request().schema.properties.memory.items.anyOf;
+  assert.equal(variants.length,1);assert.deepEqual(variants[0].properties.operation.enum,['remember']);assert.deepEqual(variants[0].properties.id.enum,['']);
+});
+
 test('reflection exposes every editable memory text and ID beyond the three recalled entries',async()=>{
   const memory=Array.from({length:12},(_,i)=>({id:'actor-memory-'+(i+1),kind:['experience','preference','belief'][i%3],text:`Observation ${i+1}: the named object has ${i+2} parts.`,updatedAt:1000+i,lastUsed:2000+i,source:'private memory bookkeeping'}));
   const world={actorName:'Butterbot',style:'curious',objective:'Inspect Orange Tulip',memory,recalledMemory:memory.slice(0,3)};
@@ -20,7 +37,7 @@ test('reflection exposes every editable memory text and ID beyond the three reca
   assert.deepEqual(history.observations,[{kind:'lastInspection',observedAt:null,ageSeconds:null,data:facts.lastInspection}]);assert.deepEqual(history.unattributedOutcomes,facts.recentOutcomes);
   assert.doesNotMatch(request.prompt,/private memory bookkeeping|updatedAt|lastUsed/);
   assert.deepEqual({world,facts},before,'preparing reflection must not mutate memory, recall or engine facts');
-  assert.equal(result.prompt,request.prompt);assert.equal(request.schema,reflectionSchema);assert.equal(request.maxTokens,600);assert.equal(request.schema.properties.memory.maxItems,3);
+  assert.equal(result.prompt,request.prompt);assert.deepEqual(request.schema,reflectionSchema(memory));assert.equal(request.maxTokens,600);assert.equal(request.schema.properties.memory.maxItems,3);
 });
 
 test('reflection retains unrecalled conflicting facts and subjective kinds without inventing editable IDs',async()=>{

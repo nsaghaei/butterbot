@@ -1,10 +1,23 @@
 # Gameplay verification
 
-These are observations from the actual local game using Gemma and Laya. Offline regressions are separate: **v23 passed 340/340; v22 329/329; v21 315/315; v20 308/308; v19 304/304; v18 275/275; v17 266/266; v16 252/252; v15 213/213; v14 208/208; v13 202/202; v12 196/196; v11 176/176; v10 162/162; v9 147/147**. Saved scenes, prompts and raw diagnostic exports stay outside Git.
+These are observations from the actual local game using Gemma and Laya. Offline regressions are separate: **v24 passed 352/352; v23 340/340; v22 329/329; v21 315/315; v20 308/308; v19 304/304; v18 275/275; v17 266/266; v16 252/252; v15 213/213; v14 208/208; v13 202/202; v12 196/196; v11 176/176; v10 162/162; v9 147/147**. Saved scenes, prompts and raw diagnostic exports stay outside Git.
+
+## September 25, 2026 — frozen v24
+
+Build `2026-09-25.24` is the current live release. **352/352 offline tests passed in 10.235 seconds.** Creation planning now includes a model-selected explicit `edible` boolean. Edibility is required when a later step eats that creation and is valid only for props; legacy omissions normalize from downstream requirements. An edible plan fixes material to food and asks only form, size and detail, preserving later pickup/give requirements without inserting an eat action. Constructed capabilities are still validated. Reflection schemas now expose the exact IDs in the character’s complete editable memory store (up to 12 entries). Remember uses an empty ID; revise/forget cannot be requested for an empty store. Failed reflections retain generated input/output, timing and usage for diagnostics. These checks constrain references; they do not establish perfect semantic memory curation.
+
+| Check | Observed result |
+| --- | --- |
+| Actual UI Retry: “Print a small edible orange, pick it up, and give it to Pip.” | **Partial result, cycle 189.** Printed `item-6`, Small Edible Orange, with food material, `edible:true` and one untouched serving. |
+| Independent print verification. | **Passed**, with `planIndex:1`. Edible construction was successful; this fixes the observed polymer rejection at that stage. |
+| Pickup and gift. | **Blocked before acting:** compact Laya state **371 tokens > 362-token allowance**, header **35 tokens**. **No pickup and no gift occurred.** |
+| Endpoint. | Paused/saved immediately; ignored export `evidence/v24-printed-gift.json`. Base paused replay save: `saved/before-v24.json`. |
+
+The full printed-gift request **did not pass**. v25’s context correction is pending. No new successful reflection/memory edit or fresh browser-console/mobile result is claimed from this attempt.
 
 ## September 25, 2026 — frozen v23
 
-Build `2026-09-25.23` is the current live release. **340/340 offline tests passed in 10.035 seconds.** Prospective inventory validation and prominent current-hands facts help Gemma plan prerequisites before execution; runtime eating checks require the intended food to be held. The engine does not insert a scripted drop.
+Historical build `2026-09-25.23`. **340/340 offline tests passed in 10.035 seconds.** Prospective inventory validation and prominent current-hands facts help Gemma plan prerequisites before execution; runtime eating checks require the intended food to be held. The engine does not insert a scripted drop.
 
 | Check | Observed result |
 | --- | --- |
@@ -23,11 +36,11 @@ Ignored evidence: `evidence/v23-mid-eat.json` and `evidence/v23-verified-hands-m
 | --- | --- |
 | Butterbot: “Print a small edible orange, pick it up, and give it to Pip.” | **Failed, cycle 187.** Gemma planned print small edible orange → pickup `$step1` → give `$step1` to Pip. Printer typing and choices were observed. The form question first refreshed, then choices were oblate, small, **polymer**, smooth. |
 | Construction and physical effects. | **All three attempts rejected:** “Only food material can be tagged edible; plastic, wood and metal cannot be eaten”. **No object materialized, no pickup and no gift.** Correct future-object references did not establish successful construction. |
-| Missing constraint. | The creation label said edible, but later pickup/give steps supplied no eat-capability requirement. The creation-plan schema lacked an explicit edible flag and material selection allowed polymer. v24's explicit model-selected capability correction is in progress; it is not shipped in v23. |
-| Reflection after the failure. | **Failed:** “Memory edit referenced an unknown entry”. This remains unresolved; no successful memory change is claimed. |
+| Missing constraint. | The creation label said edible, but later pickup/give steps supplied no eat-capability requirement. The creation-plan schema lacked an explicit edible flag and material selection allowed polymer. v24 adds the explicit model-selected capability correction; v24 verified edible construction but then failed the pickup context budget, and v23 did not contain it. |
+| Reflection after the failure. | **Failed:** “Memory edit referenced an unknown entry”. No successful memory change is claimed for this failure; v24 adds exact-ID output constraints. |
 | Final checkpoint state. | Saved/paused, selected Butterbot had moved to self-cycle **188, action_plan**. The failed last user request and cycle-187 records were retained. One food serving and the tulip on the ground remained. |
 
-Ignored export `evidence/v23-edible-material-failure.json` was captured after Butterbot entered self-cycle 188. Preserve the original failed-request and cycle-187 evidence. The earlier meal pass remains valid, but v23 is a mixed gameplay result. The full printed edible gift requires a new live replay after the proposed v24 fix; no forced eat step or keyword-based edibility substitution is part of that plan.
+Ignored export `evidence/v23-edible-material-failure.json` was captured after Butterbot entered self-cycle 188. Preserve the original failed-request and cycle-187 evidence. The earlier meal pass remains valid, but v23 is a mixed gameplay result. The v24 replay above verified edible construction but did not complete the printed gift; no forced eat step or keyword-based edibility substitution supplied that capability.
 
 ## September 25, 2026 — frozen v22
 
@@ -240,4 +253,4 @@ The left-fence printer, keyboard/screen, continuous lawn, neighborhood houses, p
 
 ## Remaining verification
 
-Broaden reflection/memory checks after v21 passed the exact stale-gift replay and separate live request; retain v20's narration failure as a regression case. Broaden food/carry invalidation and occupied-hands planning checks after the specific v23 eating success. The measured next-frame gift shift remains unfixed. Improve two-turn conversation endings and redundant gift cards. Broaden busy/occupied recipient, decline, reassignment before/after contact, critical-need, separation, timeout, reset/reload and provider-failure checks. Preserve unrelated user work and apply ownership/effects once. Continue accommodation edges, finite-food depletion, longer creation/use plans, memory consolidation, remaining poses/viewports and clean-machine setup. A full sleep cycle and relationships remain unfinished. The recorded mobile and pause/resume checks are successful baselines, not exhaustive coverage; distinguish generated prose from physical evidence.
+Resolve the v24 post-print decision-context overflow before claiming the printed edible gift completed; retain both construction and context failures as separate evidence. Broaden reflection/memory checks after v21 passed the exact stale-gift replay and separate live request; retain v20's narration failure as a regression case. Broaden food/carry invalidation and occupied-hands planning checks after the specific v23 eating success. The measured next-frame gift shift remains unfixed. Improve two-turn conversation endings and redundant gift cards. Broaden busy/occupied recipient, decline, reassignment before/after contact, critical-need, separation, timeout, reset/reload and provider-failure checks. Preserve unrelated user work and apply ownership/effects once. Continue accommodation edges, finite-food depletion, longer creation/use plans, memory consolidation, remaining poses/viewports and clean-machine setup. A full sleep cycle and relationships remain unfinished. The recorded mobile and pause/resume checks are successful baselines, not exhaustive coverage; distinguish generated prose from physical evidence.

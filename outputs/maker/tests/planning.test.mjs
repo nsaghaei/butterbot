@@ -34,3 +34,25 @@ test('world passes required later behavior into printer proposal validation',asy
     assert.deepEqual(w.plans.map(p=>p.id),['b']);assert.equal(w.stage,'choose_plan');const record=w.logs.find(l=>l.type==='plan');assert.equal(record.status,'accepted');assert.match(record.rejections[0].reason,/prop\/display/);
   }finally{w.physics.dispose();}
 });
+
+test('edibility is an explicit creation capability for gifts and does not insert an eating action',()=>{
+  const requirements=[{action:'pick_up'},{action:'give'}],before=structuredClone(requirements),food={...proposal('a','prop','display'),label:'A small edible orange gift',edible:true},plastic={...proposal('b','prop','display'),label:'A decorative plastic orange',edible:false};
+  const result=validatePlans('Print a small edible orange and give it to Pip',{plans:[food,plastic]},requirements);
+  assert.deepEqual(result.accepted,[food,plastic]);assert.deepEqual(result.rejected,[]);assert.deepEqual(requirements,before);
+  // Meaning is proposed by the model. The validator does not reinterpret words
+  // such as orange/edible in labels or insert user actions to infer a capability.
+  const omitted={...proposal('a','prop','display'),label:'edible orange'};
+  assert.equal(validatePlans('edible orange',{plans:[omitted]}).accepted[0].edible,false);
+  assert.equal('edible' in omitted,false,'legacy normalization must not mutate the original plan');
+});
+
+test('plan capability rejects malformed booleans, edible non-props and denied required food',()=>{
+  for(const edible of ['true',1,null]){
+    const result=validatePlans('A gift',{plans:[{...proposal('a','prop','display'),edible}]});
+    assert.equal(result.accepted.length,0);assert.match(result.rejected[0].reason,/edible capability must be a boolean/);
+  }
+  const unsupported=validatePlans('A gift',{plans:[{...proposal('a','soft','squish'),edible:true},{...proposal('b','vehicle','drive'),edible:false}]});
+  assert.deepEqual(unsupported.accepted.map(p=>p.id),['b']);assert.match(unsupported.rejected[0].reason,/Edible capability requires a prop/);
+  const food=validatePlans('Make something to consume',{plans:[{...proposal('a','prop','display'),edible:false},{...proposal('b','prop','display'),edible:true},proposal('c','prop','display')]},[{action:'eat'}]);
+  assert.deepEqual(food.accepted.map(p=>[p.id,p.edible]),[['b',true],['c',true]]);assert.match(food.rejected[0].reason,/Required later eating needs an edible=true/);
+});

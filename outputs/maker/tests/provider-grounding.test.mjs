@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Providers} from '../providers.mjs';
+import {Providers,creationPlanSchema} from '../providers.mjs';
 
 test('printer generation receives a schema restricted to the downstream object behavior',async()=>{
   const p=new Providers();let request;
@@ -10,10 +10,31 @@ test('printer generation receives a schema restricted to the downstream object b
   assert.equal(variants.length,1);
   assert.deepEqual(variants[0].properties.kind.enum,['prop']);
   assert.deepEqual(variants[0].properties.interaction.enum,['display']);
+  assert.deepEqual(variants[0].properties.edible,{type:'boolean',enum:[true]});assert.ok(variants[0].required.includes('edible'));
   assert.match(request.prompt,/pairs for this object: prop\/display/);
   await p.plan({objective:'Print a car and drive it',printRequirements:[{action:'use',use:'drive'}]});
   assert.deepEqual(request.schema.properties.plans.items.anyOf[0].properties.kind.enum,['vehicle']);
+  assert.deepEqual(request.schema.properties.plans.items.anyOf[0].properties.edible,{type:'boolean',enum:[false]});
   await assert.rejects(p.plan({objective:'An impossible meal',printRequirements:[{action:'eat'},{action:'use',use:'drive'}]}),/Incompatible/);
+});
+
+test('creation planning declares an edible gift capability independently of later consumption',async()=>{
+  const p=new Providers();let sent;
+  const proposed={plans:[{id:'a',label:'Small edible orange',kind:'prop',interaction:'display',edible:true},{id:'b',label:'Small edible clementine',kind:'prop',interaction:'display',edible:true}]};
+  p.generate=async(system,prompt,schema)=>{sent={prompt,schema};return {value:proposed};};
+  const requirements=[{action:'pick_up'},{action:'give'}],before=structuredClone(requirements);
+  const result=await p.plan({objective:'Print a small edible orange, pick it up, and give it to Pip.',printIntent:'Print a small edible orange',printRequirements:requirements});
+  assert.equal(result.value,proposed);assert.deepEqual(requirements,before);
+  assert.match(sent.prompt,/Every plan MUST declare edible as a boolean capability/);
+  assert.match(sent.prompt,/Set edible=true.*only later purpose is gifting, carrying or display/);
+  assert.match(sent.prompt,/decorative plastic orange has edible=false; an edible orange gift has edible=true/);
+  assert.match(sent.prompt,/capability does not add an eating action or change the requested activity plan/);
+  assert.match(sent.prompt,/Selecting edible=true fixes material to food/);
+  for(const variant of creationPlanSchema(requirements).properties.plans.items.anyOf){
+    assert.ok(variant.required.includes('edible'));assert.equal(variant.properties.edible.type,'boolean');
+    if(variant.properties.kind.enum[0]==='prop')assert.equal(variant.properties.edible.enum,undefined,'Gemma may choose true for food or false for decorative plastic');
+    else assert.deepEqual(variant.properties.edible.enum,[false]);
+  }
 });
 
 test('remaining action planning keeps exact requested coordinates next to the corrective instruction',async()=>{

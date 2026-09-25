@@ -1,6 +1,14 @@
 # Debugging checkpoint
 
-Diagnostics are shipped in **frozen v23, build `2026-09-25.23`**. The full source suite passed **340/340 tests**. Pip's preserved snack-request Retry passed its first generated drop/approach/eat plan, with actual bowl holding verified during a pause and exactly one serving consumed afterward. [PLAYTESTS.md](PLAYTESTS.md) preserves the honest v22 plan failure, the v21 reflection successes and earlier evidence separately.
+Diagnostics are shipped in **frozen v24, build `2026-09-25.24`**. The full source suite passed **352/352 tests in 10.235 seconds**. Cycle 189 verified edible construction, then failed before pickup because its compact Laya state was 371/362 tokens (35-token header). No pickup or gift occurred; v25’s context fix is pending. [PLAYTESTS.md](PLAYTESTS.md) preserves the v23 meal success, printed-gift failure, and earlier evidence separately.
+
+## v24 source checks and partial live result
+
+Creation planning now includes a model-selected explicit `edible` boolean. Edibility is required when a later step eats that creation and is valid only for props; legacy omissions normalize from downstream requirements. An edible plan fixes material to food and asks only form, size and detail, preserving later pickup/give requirements without inserting an eat action. Constructed capabilities are still validated.
+
+Reflection schemas now expose the exact IDs in the character’s complete editable memory store (up to 12 entries). Remember uses an empty ID; revise/forget cannot be requested for an empty store. Failed reflections retain generated input/output, timing and usage for diagnostics. These checks constrain references; they do not establish perfect semantic memory curation.
+
+Butterbot cycle 189 retried “Print a small edible orange, pick it up, and give it to Pip.” **Printing passed:** `item-6`, Small Edible Orange, material food, `edible:true`, one untouched serving. The independent print audit passed and `planIndex` reached 1. **The full request failed before pickup:** Laya’s compact state required **371 tokens against a 362-token allowance** (35-token header). No pickup or gift occurred. The game was immediately paused/saved; ignored evidence is `evidence/v24-printed-gift.json`. The v25 context correction is pending. The base paused replay save is `saved/before-v24.json`. Keep the independently verified materialization separate from the decision-budget failure. Do not infer a transfer or memory edit from a successful print audit.
 
 ## Available evidence
 
@@ -49,7 +57,7 @@ Cycle 187 requested printing a small edible orange, picking it up and giving it 
 
 The ignored `evidence/v23-edible-material-failure.json` export was captured after selected Butterbot entered self-cycle 188 `action_plan`; examine the preserved failed user request and **cycle-187 records**, not only the current self goal. The game was saved/paused with one food serving and the ground tulip. A subsequent reflection failed with “Memory edit referenced an unknown entry”; its proposed edit must not be counted as accepted.
 
-v24 work will add model-selected explicit creation-plan edibility, constrain material to food when required and check constructed capabilities. This remains in progress, with no forced eat step, keyword-regex inference or live success claimed. Replay the complete printed-gift sequence after integration. v23's meal success does not cover this failed construction path.
+v24 adds model-selected explicit creation-plan edibility, constrains material to food when required and checks constructed capabilities. The v24 replay verified that edible construction, then failed before pickup because its next decision context exceeded capacity. No forced eat step or keyword-regex inference supplied edibility, and the full printed gift did not succeed. v23's meal success does not cover this failed construction path.
 
 ## Remaining verification and limits
 

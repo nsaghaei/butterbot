@@ -1,8 +1,14 @@
 # Maker Garden
 
-See the [repository overview](../../README.md), [development handoff](../../HANDOFF.md), and [actual playtests](PLAYTESTS.md). The launcher selects **v23**, build `2026-09-25.23`; **340/340 offline tests passed**. Retrying Pip’s snack request produced the correct first Gemma plan, drop → approach → eat, and all 3/3 steps verified. A mid-eating pause confirmed the actual bowl was held and the tulip was on the floor. UI Resume consumed exactly one serving, bowl **2 → 1**, with hunger **20.6268 → 0**, energy **+2** and comfort **+3**. No plan rejection/repair occurred in this retry cycle. The screenshot and completed paused UI were checked; browser console had zero captured errors.
+See the [repository overview](../../README.md), [development handoff](../../HANDOFF.md), and [actual playtests](PLAYTESTS.md). The launcher selects **v24**, build `2026-09-25.24`; **352/352 offline tests passed in 10.235 seconds**. Butterbot cycle 189 correctly printed Small Edible Orange (`item-6`), food material, edible, with one untouched serving; its print audit passed. Pickup then failed before acting because the Laya compact state needed **371/362 tokens** (35-token header). The game was paused/saved with **no pickup or gift**. v25’s context fix is pending.
 
-The subsequent **print edible orange → pickup → give to Pip request failed** in v23. Polymer was selected despite the edible label; all three construction attempts were rejected by food-material validation. No object, pickup or gift occurred. A later reflection failed with an unknown memory-entry reference. v24 is addressing explicit model-selected edible construction intent and capability checks; those fixes are not included here.
+Creation planning now includes a model-selected explicit `edible` boolean. Edibility is required when a later step eats that creation and is valid only for props; legacy omissions normalize from downstream requirements. An edible plan fixes material to food and asks only form, size and detail, preserving later pickup/give requirements without inserting an eat action. Constructed capabilities are still validated.
+
+Reflection schemas now expose the exact IDs in the character’s complete editable memory store (up to 12 entries). Remember uses an empty ID; revise/forget cannot be requested for an empty store. Failed reflections retain generated input/output, timing and usage for diagnostics. These checks constrain references; they do not establish perfect semantic memory curation.
+
+Historical v23 passed **340/340 offline tests**. Retrying Pip’s snack request produced the correct first Gemma plan, drop → approach → eat, and all 3/3 steps verified. A mid-eating pause confirmed the actual bowl was held and the tulip was on the floor. UI Resume consumed exactly one serving, bowl **2 → 1**, with hunger **20.6268 → 0**, energy **+2** and comfort **+3**. No plan rejection/repair occurred in this retry cycle. The screenshot and completed paused UI were checked; browser console had zero captured errors.
+
+The subsequent **print edible orange → pickup → give to Pip request failed** in v23. Polymer was selected despite the edible label; all three construction attempts were rejected by food-material validation. No object, pickup or gift occurred. A later reflection failed with an unknown memory-entry reference. v24 includes explicit model-selected edible construction intent and exact memory-ID constraints, and its live replay verified edible construction before the post-print context failure. The full printed gift and new memory-edit behavior are not claimed as live successes.
 
 Open **http://127.0.0.1:8790/** and select **Butterbot**, the ivory/teal robot, or **Pip**, the peach/coral robot, using the cast buttons. Give the selected character a goal in the bottom composer. Each has independent goals, personality, needs and private memory; both can speak visibly. Try “Go chat with Pip about your favorite things in this garden” while Butterbot is selected. Fresh scenes use two robots; saved casts are respected. An old default name Agent Wobble migrates to Butterbot; custom names remain intact.
 
@@ -14,7 +20,7 @@ Use **Pause/Resume** to control simulation time. Failed requests remain visible 
 
 ## Launch
 
-From this folder, run `powershell -NoProfile -File .\start.ps1`. The script starts frozen `releases/v23` in a hidden process with `saved/garden-v2.json` and this folder's `node_modules`. It refuses a duplicate server on port 8790. Logs go to the repository's `work/maker-v23.log` and `work/maker-v23-error.log`. It does not install software or manage model services.
+From this folder, run `powershell -NoProfile -File .\start.ps1`. The script starts frozen `releases/v24` in a hidden process with `saved/garden-v2.json` and this folder's `node_modules`. It refuses a duplicate server on port 8790. Logs go to the repository's `work/maker-v24.log` and `work/maker-v24-error.log`. It does not install software or manage model services.
 
 The existing development installation requires:
 

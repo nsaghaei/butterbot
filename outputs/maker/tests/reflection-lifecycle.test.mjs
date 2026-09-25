@@ -29,3 +29,12 @@ test('new authoritative evidence invalidates an in-flight reflection even when t
     assert.equal(f.brain.logs.at(-1).status,'discarded');assert.equal(f.brain.thought,null);assert.equal(f.brain.memory.length,0);assert.equal(f.brain.stage,'acting');
   }finally{f.garden.physics.dispose();}
 });
+
+test('a rejected generated memory edit retains the exact reflection request and response for diagnostics',async()=>{
+  const result={thought:'A meal would be nice.',speech:'',memory:[{operation:'revise',id:'unknown-memory',kind:'experience',text:'An invalid edit'}],proposedActions:[]};
+  const providers={provider:'test',reflect:async()=>({prompt:'Complete current memory store: []',value:result,elapsedMs:25,usage:{output:20}})};
+  const garden=new Garden({providers,seedFood:false});try{
+    const brain=garden.selected;await brain.reflect('Review the printer failure');const record=brain.logs.at(-1);
+    assert.equal(record.status,'failed');assert.match(record.error,/unknown entry/);assert.equal(record.prompt,'Complete current memory store: []');assert.deepEqual(record.result,result);assert.equal(record.elapsedMs,25);assert.deepEqual(record.usage,{output:20});assert.equal(brain.memory.length,0);assert.equal(brain.thought,undefined);
+  }finally{garden.physics.dispose();}
+});
