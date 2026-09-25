@@ -6,7 +6,9 @@ The current game is **Maker Garden**: Butterbot and Pip, a garden, and a printer
 
 ## Current checkpoint
 
-The launcher selects **frozen v24**, build `2026-09-25.24`. **352/352 offline tests passed in 10.235 seconds.** Butterbot cycle 189 created and independently verified a food-material Small Edible Orange (`item-6`, edible, one untouched serving). Pickup then failed before acting because Laya’s compact state was 371 tokens against a 362-token allowance (35-token header). No pickup or gift occurred; the game was paused/saved. The v25 context correction is pending. The last published checkpoint is v23 (`09dd48f`, tag `checkpoint-2026-09-25-v23`).
+The launcher selects **frozen v25**, build `2026-09-25.25`. **370/370 offline tests passed in 11.118 seconds.** Live Retry reused the verified orange and pickup passed its independent audit. Pip’s acceptance context then exceeded its allowance, **377/362 tokens**, so no handoff occurred. Butterbot still held the untouched orange when the game was paused/saved. v26’s recipient-context fix is pending.
+
+Historical v24 passed **352/352 offline tests in 10.235 seconds**. Butterbot cycle 189 created and independently verified a food-material Small Edible Orange (`item-6`, edible, one untouched serving). Pickup then failed before acting because Laya’s compact state was 371 tokens against a 362-token allowance (35-token header). No pickup or gift occurred; the game was paused/saved. v25 passed the resumed pickup, then failed a distinct recipient-acceptance context check before gifting. The last published checkpoint is v24 (`398ee7f`, tag `checkpoint-2026-09-25-v24`).
 
 Creation planning now includes a model-selected explicit `edible` boolean. Edibility is required when a later step eats that creation and is valid only for props; legacy omissions normalize from downstream requirements. An edible plan fixes material to food and asks only form, size and detail, preserving later pickup/give requirements without inserting an eat action. Constructed capabilities are still validated.
 
@@ -31,6 +33,14 @@ The garden has six decaying needs, a starter daybed, bench, physical shower and 
 Earlier verified runs include v11's complete wash → sit → bed-rest request and autonomous follow-on rest, and v9's exact walk/dance/observation and print-orange/eat requests. These remain historical results, not verification of every later change. See [PLAYTESTS.md](outputs/maker/PLAYTESTS.md) for outcomes and [HANDOFF.md](HANDOFF.md) for continuation work.
 
 The foundation includes independent user and autonomous goals, physical object interactions, persistence, bounded construction generation, diagnostics and deduplicated memories. Each robot has its own personality, needs and memory. Reflection receives the complete editable memory store, so Gemma can revise or forget paraphrases without automatic semantic deletion. The needs are energy, hunger, fun, hygiene, comfort and social. The [first social milestone](outputs/maker/SOCIAL_PLAN.md) is implemented and tested; a larger social simulation and full sleep cycle remain future work.
+
+## v25 — verified Retry and pickup, gift blocked
+
+**Frozen/live v25, build `2026-09-25.25`: 370/370 offline tests passed in 11.118 seconds.** The launcher now selects v25. The actual UI Retry used the identity-guarded `/api/resume`; its paused API snapshot retained original cycle 189, `planIndex:1`, creation `actor-record-1530` and verification `actor-record-1534`. The cycle serial was 190, and the same `item-6` remained among eight entities. UI Resume then continued the live run. Gemma replanned only pickup → give. Actual pickup completed and its independent step-2 audit passed, reaching `planIndex:2`. **The gift then failed before handoff:** Pip’s acceptance context required **377 tokens against 362** (30-token header), while its context included goal “Take a walk to the sunny pad.” and stage `action_plan`. No transfer occurred. Butterbot still held the same `item-6`, with one untouched edible serving; no new object or print was created. The watcher immediately paused/saved. Ignored evidence: `outputs/maker/evidence/v25-continued-gift.json`. **The full printed gift did not pass; the v26 recipient-context correction is pending.** The last published checkpoint remains v24 (`398ee7f`, tag `checkpoint-2026-09-25-v24`).
+
+Stale asynchronous self-goal selection rejection and construction-worker failure can no longer overwrite a newer request or spend its construction repair budget. The final suite also includes a regression for the actual UI Retry path.
+
+Source changes compact the decision context without omitting required facts, preserve authentic verified progress when retrying after autonomy/reload, and ease rigid gifts into the recipient grip over 0.3 seconds. Offline fixture budgets and motion regressions passed; the full suite and live Retry/pickup passed, while recipient acceptance failed before handoff. This attempt did not reach the new gift transition. Receiver hand alignment remains unfinished.
 
 ## How it works
 
@@ -117,10 +127,10 @@ From the repository root, run `node work/build-ui.cjs` to build the browser bund
 | `outputs/maker/tests/` | Includes capsule destinations, clear furniture approaches, posture transitions and bounded navigation recovery |
 | `outputs/maker/execution-evidence.mjs` | Recorded completion evidence and shared navigation tolerance for verification |
 | `outputs/maker/social-jobs.mjs` | Paired conversation/gift sessions, actual delivery/transfer, cancellation and effects |
-| `outputs/maker/releases/` | Immutable application checkpoints; launcher defaults to v24 |
+| `outputs/maker/releases/` | Immutable application checkpoints; launcher defaults to v25 |
 | `outputs/maker/HANDOFF-*.md` | Scoped implementation notes; some describe earlier checkpoints |
 | `work/` | Tracked UI build and release scripts |
 
 Dependencies are pinned in `pnpm-lock.yaml`; bundled Ammo files retain their attribution. Model downloads, installed dependencies, logs, saved scenes, and raw playtest evidence are excluded from Git.
 
-Next, fix the post-print context overflow and replay the full pickup/gift sequence while preserving all required facts. Then broaden food/hand invalidation, interrupted meal, reflection and memory checks. The held-flower eating case passed in v23 after v22 first blocked it honestly. Gift rendering still shifts the object about 29.7 cm on the next frame at the tested spacing; no new visual blend fixes it. Broader card cleanup, conversation endings, relationships, a full sleep cycle and verified clean-machine installation remain unfinished.
+Next, fix the recipient-acceptance context overflow and continue the gift from the verified pickup while preserving all required facts. Then broaden food/hand invalidation, interrupted meal, reflection and memory checks. The held-flower eating case passed in v23 after v22 first blocked it honestly. Gift rendering still shifts the object about 29.7 cm on the next frame at the tested spacing; no new visual blend fixes it. Broader card cleanup, conversation endings, relationships, a full sleep cycle and verified clean-machine installation remain unfinished.

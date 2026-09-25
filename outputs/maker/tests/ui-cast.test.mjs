@@ -108,6 +108,16 @@ test('character selection disables real request controls until API acknowledgmen
   c.state={...c.state,actorId:'pip',actorName:'Pip'};c.renderUI();assert.equal(nodes.get('#send').disabled,false);assert.equal(nodes.get('#talk-label').textContent,'Tell Pip something');assert.equal(await c.submitCharacterObjective('Dance',true),true);assert.deepEqual(plain(requests.at(-1).data),{actorId:'pip',objective:'Dance'});assert.equal(nodes.get('#objective-input').value,'');
 });
 
+test('the Retry button continues the identified failed request instead of assigning a duplicate objective',async()=>{
+  const {context:c,nodes,requests}=requestFixture();c.state.lastUserGoal={status:'failed',text:'Print an orange, then give it to Pip.',cycle:189};
+  vm.runInContext(section("$('#retry-request').onclick=", "$('#talk-form').onsubmit="),c);
+  await nodes.get('#retry-request').onclick();assert.equal(requests.length,1);assert.equal(requests[0].path,'/api/resume');
+  assert.deepEqual(plain(requests[0].data),{actorId:'actor',objective:c.state.lastUserGoal.text,cycle:189});
+  assert.equal(nodes.get('#objective-input').value,'A quick new goal','retry leaves any draft message alone');
+  assert.equal(nodes.get('#send-status').textContent,'Continuing Butterbot’s request');
+  c.state.lastUserGoal.status='active';await nodes.get('#retry-request').onclick();assert.equal(requests.length,1);
+});
+
 test('selection also waits when SSE arrives first, and a failed or superseded selection cannot leave controls locked',async()=>{
   const {context:c,nodes,requests,errors}=requestFixture(),switching=c.selectActor('pip');c.state={...c.state,actorId:'pip',actorName:'Pip'};c.renderUI();assert.equal(nodes.get('#send').disabled,true,'SSE alone does not acknowledge the request');requests[0].resolve({ok:true});await switching;assert.equal(nodes.get('#send').disabled,false);
   const failing=c.selectActor('actor');requests[1].reject(Error('Selection unavailable'));await failing;assert.equal(nodes.get('#send').disabled,false);assert.equal(nodes.get('#talk-label').textContent,'Tell Pip something');assert.deepEqual(errors,['Selection unavailable']);

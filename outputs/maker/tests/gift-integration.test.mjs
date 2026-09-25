@@ -33,7 +33,7 @@ test('a gift waits for the recipient walk and audit, asks consent, pauses safely
   const f=fixture();try{
     const peerMove={action:'move',x:-4,z:5,label:'Finish my walk'};
     f.recipient.assign('Finish my walk.');f.recipient.goalSource='self';f.recipient.planSteps=[peerMove];f.recipient.startAction(peerMove);planGift(f);
-    let waited=false,paused=false,receivePose=false,transfers=0;const primitive=f.garden.physics.giftObject.bind(f.garden.physics);
+    let waited=false,paused=false,settlePaused=false,receivePose=false,transfers=0;const primitive=f.garden.physics.giftObject.bind(f.garden.physics);
     f.garden.physics.giftObject=(...args)=>{transfers++;return primitive(...args);};
     const finished=await pump(f,{until:()=>f.giver.stage==='complete',onFrame:()=>{
       const pair=f.garden.social.forActor('actor');waited||=pair?.phase==='waiting';
@@ -43,8 +43,14 @@ test('a gift waits for the recipient walk and audit, asks consent, pauses safely
         for(let i=0;i<180;i++)f.garden.step();assert.equal(pair.giftElapsed,elapsed);assert.equal(f.object.carrier,carrier);assert.equal(carrier,'actor');
         f.garden.setPaused(false);assert.deepEqual([f.giver.revision,f.recipient.revision],revisions);paused=true;
       }
+      if(pair?.transferred&&f.object.handoff&&!settlePaused){
+        f.garden.setPaused(true);const elapsed=f.object.handoff.elapsed,position={...f.object.body.translation()};
+        for(let i=0;i<180;i++)f.garden.step();
+        assert.equal(f.object.handoff.elapsed,elapsed);assert.deepEqual({...f.object.body.translation()},position);assert.equal(f.object.carrier,'pip');
+        f.garden.setPaused(false);settlePaused=true;
+      }
     }});
-    assert.ok(finished);assert.ok(waited);assert.ok(paused);assert.ok(receivePose);assert.equal(f.calls.accepted,1);assert.equal(transfers,1);
+    assert.ok(finished);assert.ok(waited);assert.ok(paused);assert.ok(settlePaused);assert.ok(receivePose);assert.equal(f.calls.accepted,1);assert.equal(transfers,1);
     assert.equal(f.object.carrier,'pip');assert.equal(f.object.owner,'pip');assert.equal(f.giver.planIndex,1);
     const proof=f.calls.audits.find(e=>e.completion?.job?.action==='give').completion.job.giftEvidence;
     assert.equal(proof.status,'completed');assert.equal(proof.accepted,true);assert.equal(proof.transferred,true);assert.equal(proof.transferCount,1);assert.equal(proof.after.carrier,'pip');assert.equal(proof.before.carrier,'actor');assert.ok(proof.distanceAtTransfer<=2);assert.equal(proof.gesture.completed,true);
@@ -82,7 +88,10 @@ test('reload after gift contact preserves actual ownership and evidence without 
     const saved=f.garden.save();restored=new Garden({providers:f.providers,cast:'duo',seedFood:false});restored.restore(saved);
     assert.equal(restored.physics.entities.get(f.object.id).carrier,'pip');assert.equal(restored.social.snapshot().active.length,0);const proof=restored.social.snapshot().history.at(-1).giftEvidence;
     assert.equal(proof.transferred,true);assert.equal(proof.transferCount,1);assert.equal(proof.after.carrier,'pip');assert.equal(restored.selected.job,null);assert.equal(restored.selected.stage,'action_plan');
-    for(let i=0;i<120;i++)restored.step();assert.equal(restored.physics.entities.get(f.object.id).carrier,'pip');assert.equal(restored.social.snapshot().history.at(-1).giftEvidence.transferCount,1);
+    const restoredObject=restored.physics.entities.get(f.object.id),position={...restoredObject.body.translation()};
+    assert.ok(restoredObject.handoff,'the short contact-to-grip motion survives reload');
+    restored.step();const next=restoredObject.body.translation();assert.ok(Math.hypot(next.x-position.x,next.y-position.y,next.z-position.z)<.02,'reloading at contact cannot teleport to the recipient grip');
+    for(let i=0;i<120;i++)restored.step();assert.equal(restored.physics.entities.get(f.object.id).carrier,'pip');assert.equal(restored.social.snapshot().history.at(-1).giftEvidence.transferCount,1);assert.equal(restoredObject.handoff,null);
   }finally{restored?.physics.dispose();f.garden.physics.dispose();}
 });
 

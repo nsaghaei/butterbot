@@ -1,6 +1,8 @@
 # Maker Garden
 
-See the [repository overview](../../README.md), [development handoff](../../HANDOFF.md), and [actual playtests](PLAYTESTS.md). The launcher selects **v24**, build `2026-09-25.24`; **352/352 offline tests passed in 10.235 seconds**. Butterbot cycle 189 correctly printed Small Edible Orange (`item-6`), food material, edible, with one untouched serving; its print audit passed. Pickup then failed before acting because the Laya compact state needed **371/362 tokens** (35-token header). The game was paused/saved with **no pickup or gift**. v25’s context fix is pending.
+See the [repository overview](../../README.md), [development handoff](../../HANDOFF.md), and [actual playtests](PLAYTESTS.md). The launcher selects **v25**, build `2026-09-25.25`; **370/370 offline tests passed in 11.118 seconds**. UI Retry preserved the verified print and existing orange, then pickup completed and independently verified. Pip’s acceptance context failed at **377/362 tokens** before handoff. Butterbot retained the untouched orange; the game was paused/saved. v26’s recipient-context correction is pending.
+
+Historical v24 passed **352/352 offline tests in 10.235 seconds**. Butterbot cycle 189 correctly printed Small Edible Orange (`item-6`), food material, edible, with one untouched serving; its print audit passed. Pickup then failed before acting because the Laya compact state needed **371/362 tokens** (35-token header). The game was paused/saved with **no pickup or gift**. v25 passed the resumed pickup, then failed the distinct recipient-acceptance context before handoff.
 
 Creation planning now includes a model-selected explicit `edible` boolean. Edibility is required when a later step eats that creation and is valid only for props; legacy omissions normalize from downstream requirements. An edible plan fixes material to food and asks only form, size and detail, preserving later pickup/give requirements without inserting an eat action. Constructed capabilities are still validated.
 
@@ -18,9 +20,21 @@ Thoughts/decisions and memories start at equal height; drag their divider to res
 
 Use **Pause/Resume** to control simulation time. Failed requests remain visible with **Retry** while autonomy continues. Colored travel markers match movement records. Completed action cards show recorded need changes; tooltips expose before/after values and elapsed action time. Diagnostics offers **Debug session** and **Export debug**. The printer has a keyboard/screen and a quiet accepted-prompt double bell, unlocked by browser interaction and optionally muted. **Reset everything** clears generated objects, goals and mutable memories and restores the starter garden. Older saves receive starter objects once; later reloads preserve consumed servings and removed objects.
 
+## v25 — verified Retry and pickup, gift blocked
+
+**Frozen/live v25, build `2026-09-25.25`: 370/370 offline tests passed in 11.118 seconds.** The launcher now selects v25. The actual UI Retry used the identity-guarded `/api/resume`; its paused API snapshot retained original cycle 189, `planIndex:1`, creation `actor-record-1530` and verification `actor-record-1534`. The cycle serial was 190, and the same `item-6` remained among eight entities. UI Resume then continued the live run. Gemma replanned only pickup → give. Actual pickup completed and its independent step-2 audit passed, reaching `planIndex:2`. **The gift then failed before handoff:** Pip’s acceptance context required **377 tokens against 362** (30-token header), while its context included goal “Take a walk to the sunny pad.” and stage `action_plan`. No transfer occurred. Butterbot still held the same `item-6`, with one untouched edible serving; no new object or print was created. The watcher immediately paused/saved. Ignored evidence: `evidence/v25-continued-gift.json`. **The full printed gift did not pass; the v26 recipient-context correction is pending.** The last published checkpoint remains v24 (`398ee7f`, tag `checkpoint-2026-09-25-v24`).
+
+Stale asynchronous self-goal selection rejection and construction-worker failure can no longer overwrite a newer request or spend its construction repair budget. The final suite also includes a regression for the actual UI Retry path.
+
+The source context profile is more concise while retaining the exact goal, full ordered plan, complete object names/positions, offered choices and required facts. Offline checks using the actual failing fixture fit the 362-token state allowance: pickup 334, pickup completion 348, give 339, give completion 358; gift acceptance 357. These fixture checks did not cover the failing live recipient state: acceptance later needed 377/362 tokens. They are not evidence of a completed live gift.
+
+Safe Retry retains authentic verified steps, the original cycle and its records after autonomy or reload, so the already printed `item-6` can be reused rather than printed again. New goals receive a monotonically increasing cycle serial. Stored completion proof is bounded; retry does not fabricate verification.
+
+For rigid gifts such as the orange and tulip, the source contact transition eases the actual object position and rotation into the recipient grip over 0.3 seconds. Ownership still transfers exactly once at contact, and save/restore preserves the bounded transient. Rigid-object regression checks cover the measured 29.7 cm next-frame jump, including reload; receiver hand alignment is not fully solved. This live request failed before handoff, so it did not demonstrate the new transition visually.
+
 ## Launch
 
-From this folder, run `powershell -NoProfile -File .\start.ps1`. The script starts frozen `releases/v24` in a hidden process with `saved/garden-v2.json` and this folder's `node_modules`. It refuses a duplicate server on port 8790. Logs go to the repository's `work/maker-v24.log` and `work/maker-v24-error.log`. It does not install software or manage model services.
+From this folder, run `powershell -NoProfile -File .\start.ps1`. The script starts frozen `releases/v25` in a hidden process with `saved/garden-v2.json` and this folder's `node_modules`. It refuses a duplicate server on port 8790. Logs go to the repository's `work/maker-v25.log` and `work/maker-v25-error.log`. It does not install software or manage model services.
 
 The existing development installation requires:
 
