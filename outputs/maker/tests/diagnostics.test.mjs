@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {mkdtemp,readFile,writeFile,rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import net from 'node:net';
+import {spawn} from 'node:child_process';
 import {buildDebugReport,DiagnosticJournal} from '../diagnostics.mjs';
 import {parseArgs,runDebug} from '../debug.mjs';
 
@@ -79,3 +81,30 @@ test('CLI reports a bounded timeout or superseded objective rather than claiming
   }
   assert.throws(()=>parseArgs(['--url','https://example.com']),/local HTTP/);assert.throws(()=>parseArgs(['--seconds','NaN']),/between/);assert.throws(()=>parseArgs(['--goal',' ']),/1–240/);
 });
+
+test('isolated HTTP debug endpoints are read-only and export, save and graceful shutdown preserve evidence',{timeout:20000},async()=>temporary(async(file,dir)=>{
+  // Real Garden, physics and server; every provider fetch is intercepted in the child.
+  const {Garden}=await import('../garden.mjs');
+  const garden=new Garden({seedFood:false}),brain=garden.selected;
+  garden.mode='manual';garden.paused=true;brain.goalSource='user';brain.objective='Offline printer failure fixture';brain.stage='failed';brain.error='Unexpected extra parenthesis';brain.planSteps=[{action:'approach',target:'printer',label:'Approach printer'},{action:'print',label:'Print a test prop'}];brain.planIndex=1;
+  brain.logs=[{id:'offline-decision',cycle:brain.cycle,time:1,type:'laya',status:'accepted',question:'Print this design?',choices:{a:'Print',b:'Revise'},response:{choice:'a',probabilities:{a:.75,b:.25}},request:{state:'Exact original decision input'}},{id:'offline-failure',cycle:brain.cycle,time:2,type:'design',status:'rejected',prompt:'Exact original construction input',proposal:{code:'return createProp());'},error:brain.error}];
+  const saveFile=path.join(dir,'isolated-save.json');await writeFile(saveFile,JSON.stringify(garden.save()));garden.physics.dispose();
+  const reservation=net.createServer();await new Promise((resolve,reject)=>{reservation.once('error',reject);reservation.listen(0,'127.0.0.1',resolve);});const port=reservation.address().port;await new Promise(resolve=>reservation.close(resolve));
+  const bootstrap=path.join(dir,'offline-server.mjs');await writeFile(bootstrap,`globalThis.fetch=async (url)=>{process.send?.({type:'provider-call',url:String(url)});throw Error('Offline diagnostic test: no network provider access');};\nawait import(${JSON.stringify(new URL('../server-v2.mjs',import.meta.url).href)});\nprocess.on('message',message=>{if(message==='graceful-shutdown')process.emit('SIGTERM');});\n`);
+  const child=spawn(process.execPath,[bootstrap],{cwd:dir,windowsHide:true,stdio:['ignore','pipe','pipe','ipc'],env:{...process.env,PORT:String(port),SAVE_FILE:saveFile,NO_RESTORE:'0',GENERATOR_PROVIDER:'ollama',LAYA_URL:'http://127.0.0.1:1',GENERATOR_URL:'http://127.0.0.1:1'}});
+  const exited=new Promise(resolve=>child.once('exit',(code,signal)=>resolve({code,signal}))),providerCalls=[];let output='';child.stderr.on('data',chunk=>output+=chunk);child.on('message',message=>{if(message.type==='provider-call')providerCalls.push(message.url);});
+  try{
+    await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Isolated server did not start: '+output)),8000);child.once('error',error=>{clearTimeout(timer);reject(error);});child.stdout.on('data',chunk=>{output+=chunk;if(output.includes('Maker Garden:')){clearTimeout(timer);resolve();}});child.once('exit',()=>{clearTimeout(timer);reject(Error('Isolated server exited: '+output));});});
+    const url='http://127.0.0.1:'+port,read=async route=>{const response=await fetch(url+route,{signal:AbortSignal.timeout(5000)});assert.equal(response.status,200);return response.json();},post=async(route,data={})=>{const response=await fetch(url+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(5000)});assert.equal(response.status,200,await response.text());};
+    const before=await read('/api/state'),report=await read('/api/debug');assert.equal(report.current.objective,'Offline printer failure fixture');assert.equal(report.current.currentStep.number,2);assert.equal(report.latestRecords[0].record.response.probabilities.a,.75);assert.equal(report.latestRecords[1].record.proposal.code,'return createProp());');
+    const downloaded=await fetch(url+'/api/debug/export');assert.equal(downloaded.status,200);assert.match(downloaded.headers.get('content-disposition'),/attachment.*garden-debug\.json/);const exported=await downloaded.json();assert.deepEqual(exported.latestRecords,report.latestRecords);assert.equal(exported.journal.file,path.join(dir,'debug','history.jsonl'));
+    const after=await read('/api/state');for(const key of ['objective','cycle','stage','planSteps','planIndex','memory','entities'])assert.deepEqual(after[key],before[key],key+' changed after read-only debug requests');assert.deepEqual(after.inference.calls,{laya:0,generator:0});
+    assert.ok(providerCalls.length<=2);assert.ok(providerCalls.every(u=>u==='http://127.0.0.1:1/api/health'||u==='http://127.0.0.1:1/api/tags'));
+    const journalFile=path.join(dir,'debug','history.jsonl');assert.deepEqual((await lines(journalFile)).map(e=>e.record.id),['offline-decision','offline-failure']);await post('/api/save');const saved=JSON.parse(await readFile(saveFile,'utf8'));assert.equal(saved.brains[0].logs[1].error,'Unexpected extra parenthesis');assert.equal((await lines(journalFile)).length,2,'export/save must not append duplicate records');
+    const layout=await fetch(url+'/environment-layout.mjs');assert.equal(layout.status,200);assert.match(layout.headers.get('content-type'),/javascript/);assert.match(await layout.text(),/export /);
+    const foreign=await fetch(url+'/api/debug',{headers:{Origin:'https://example.com'}});assert.equal(foreign.status,403);
+    await post('/api/resume');const resumed=await read('/api/debug');assert.ok(resumed.current.cycle>saved.brains[0].cycle);assert.equal(resumed.current.objective,'Offline printer failure fixture');await post('/api/control',{paused:false});
+    child.send('graceful-shutdown');const result=await Promise.race([exited,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('Graceful shutdown did not finish: '+output)),5000);timer.unref();})]);assert.equal(result.code,0,output);
+    const shutDownSave=JSON.parse(await readFile(saveFile,'utf8'));assert.equal(shutDownSave.brains[0].cycle,resumed.current.cycle);assert.equal(shutDownSave.world.control.paused,false,'shutdown must preserve the previous pause preference');assert.equal((await lines(journalFile)).length,2);
+  }finally{if(child.exitCode===null){child.kill();await exited;}}
+}));

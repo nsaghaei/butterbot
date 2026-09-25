@@ -40,7 +40,7 @@ test('observation includes nearby object descriptions and characters while exclu
     const marker=observation.objects.find(o=>o.id===near.id);assert.ok(marker);assert.equal(marker.name,design.name);
     assert.equal(marker.kind,'prop');assert.equal(marker.description,design.description);assert.deepEqual(marker.affordances,['display']);
     assert.ok(marker.distance>0&&marker.distance<=6);assert.ok(!observation.objects.some(o=>o.id===far.id));
-    assert.ok(observation.objects.some(o=>o.id==='printer'));assert.ok(!observation.objects.some(o=>o.id==='planter'));
+    assert.ok(!observation.objects.some(o=>o.id==='printer'),'the relocated printer is across the yard, outside the observation radius');assert.ok(!observation.objects.some(o=>o.id==='planter'));
     const character=observation.characters.find(c=>c.id===friend.id);assert.ok(character);assert.equal(character.name,'Bram');
     assert.ok(character.distance<=6);assert.ok(!observation.characters.some(c=>c.id===distant.id||c.id==='actor'));
     assert.deepEqual(observation.landmarks,LANDMARKS);assert.deepEqual(observation.bounds,{x:[-13,13],z:[-12,12]});

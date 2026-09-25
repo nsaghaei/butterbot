@@ -9,10 +9,19 @@ The current game is called **Maker Garden**. Its first character, Agent Wobble, 
 This is a development checkpoint, **not a finished game**.
 
 - **Frozen release v6** is the last tested baseline. Its 60 offline tests passed before newer work began. The launcher uses this release so unfinished source changes do not affect a running game.
-- **Working source** includes newer object capabilities, timed interactions, physical animations, and debugging tools. The checkpoint suite passed **82 of 84 tests**. Two older assertions still expect immediate eating and earlier fixture-error wording; integration and live playtesting remain pending.
+- **Working source** now passes **97 of 97 regression tests**. The two checkpoint failures are fixed, with new checks for object capabilities, timed interactions, goal persistence, and real debugging HTTP endpoints. Visual integration and real-model playtesting remain in progress; the launcher still uses frozen v6.
 - A repeated-step printer loop was fixed in v6. Printing is still not consistently reliable: in the latest observed flower request, a valid design was produced but the character declined the final print decision. That request did **not** create a flower.
 
 See [HANDOFF.md](HANDOFF.md) for known issues, implementation notes, and the ordered continuation plan.
+
+### Fixes since the first checkpoint
+
+- New instructions preserve a held object, so a follow-up can act on it.
+- A rejected action at execution time records a failure instead of silently retrying the same selection.
+- Failed user requests remain in the saved state while autonomous activity continues.
+- Printer review includes the proposed object's description and correctly distinguishes passed physical checks from unverified visual resemblance.
+- Object capabilities, lifting limits, ownership, bounded throws, gifting recipients, and depleted food are covered by regression tests.
+- Printer perception, navigation and collision now share one layout definition for the planned left-fence placement. The matching visual update is in progress.
 
 ## How it works
 

@@ -1,3 +1,4 @@
+import {PRINTER} from './environment-layout.mjs';
 import {PhysicalRig} from './physical-rig.mjs';
 import {attributesFor,normalizeAttributes} from './object-attributes.mjs';
 import RAPIER from '@dimforge/rapier3d-compat';
@@ -12,7 +13,7 @@ export class Physics {
     this.config=new Ammo.btSoftBodyRigidBodyCollisionConfiguration();this.dispatcher=new Ammo.btCollisionDispatcher(this.config);this.broadphase=new Ammo.btDbvtBroadphase();this.solver=new Ammo.btSequentialImpulseConstraintSolver();this.softSolver=new Ammo.btDefaultSoftBodySolver();
     this.softWorld=new Ammo.btSoftRigidDynamicsWorld(this.dispatcher,this.broadphase,this.solver,this.config,this.softSolver);const gravity=new Ammo.btVector3(0,-9.81,0);this.softWorld.setGravity(gravity);this.softWorld.getWorldInfo().set_m_gravity(gravity);Ammo.destroy(gravity);this.helpers=new Ammo.btSoftBodyHelpers();this.proxies=new Map();this.ammoOwned=[];this.ammoResources=new Map();
     this.fixedBox('ground',vec(0,-.2,0),vec(30,.2,30));
-    for(const [id,p,h]of [['back',vec(0,1,-12),vec(13,1,.15)],['left',vec(-13,1,0),vec(.15,1,12)],['right',vec(13,1,0),vec(.15,1,12)],['front',vec(0,.4,12),vec(13,.4,.15)],['printer',vec(-5,1,-3.5),vec(1.7,1,1.3)],['planter',vec(6,.5,-7),vec(2,.5,.8)]])this.fixedBox(id,p,h);
+    for(const [id,p,h]of [['back',vec(0,1,-12),vec(13,1,.15)],['left',vec(-13,1,0),vec(.15,1,12)],['right',vec(13,1,0),vec(.15,1,12)],['front',vec(0,.4,12),vec(13,.4,.15)],['printer',PRINTER.center,vec(1.3,1,1.7)],['keyboard',PRINTER.keyboard,vec(.43,.06,.68)],['planter',vec(6,.5,-7),vec(2,.5,.8)]])this.fixedBox(id,p,h);
     this.actor=this.character('actor',vec(-1,1.2,3));
   }
   ammoBox(position,half){const extent=new Ammo.btVector3(half.x,half.y,half.z),shape=new Ammo.btBoxShape(extent),transform=new Ammo.btTransform(),origin=new Ammo.btVector3(position.x,position.y,position.z);transform.setIdentity();transform.setOrigin(origin);Ammo.destroy(extent);Ammo.destroy(origin);const motion=new Ammo.btDefaultMotionState(transform),inertia=new Ammo.btVector3(0,0,0),info=new Ammo.btRigidBodyConstructionInfo(0,motion,shape,inertia),body=new Ammo.btRigidBody(info);body.setCollisionFlags(body.getCollisionFlags()|2);body.setActivationState(4);this.softWorld.addRigidBody(body);const resources=[body,info,motion,transform,shape,inertia];this.ammoOwned.push(...resources);this.ammoResources.set(body,resources);return body;}

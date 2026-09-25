@@ -1,13 +1,17 @@
 # Development handoff
 
-Checkpoint requested September 25, 2026, before beginning the broader Sims-like game goal. Feature work is on hold for this push.
+Initial checkpoint saved September 25, 2026. The user has resumed the broader Sims-like game goal: fix regressions first, then polish and repeatedly playtest the single-character experience before expanding the cast.
 
 ## Baseline and working source
 
 - `outputs/maker/releases/v6` is frozen; the launcher selects it. Its prior offline verification passed 60 tests.
 - `outputs/maker` is newer source, labeled build `2026-09-25.7`. It has not been deployed or fully integrated.
 - Preserve existing saves. Use isolated worlds and separate save paths for tests. Never overwrite a running frozen release.
-- The next UI, life-needs, and social expansion was paused before implementation.
+- UI work and the single-character needs foundation are in progress. Multi-character feature expansion has not started.
+
+## Fix milestone after the checkpoint
+
+All **97/97 tests pass**. Fixed the two old assertions with timed eating and explicit fixture capability checks. Added real-server debug/read-only/export/save/shutdown verification, seven capability regressions and five goal-reliability regressions. New instructions preserve held objects; commit-time validation failures no longer bypass error handling; failed user requests persist in `lastUserGoal`; review context includes descriptions and truthful physical-versus-visual verification wording. The rotated printer uses shared perception/navigation/physics coordinates from `environment-layout.mjs`. No live release has been replaced yet.
 
 ## Already implemented in v6
 
@@ -26,10 +30,10 @@ Read the scoped handoffs before editing overlapping files:
 ## Known issues and remaining goals
 
 1. **Printing reliability.** The v6 repeated-step loop is fixed: completion choices preserve successful action evidence and request verification. The latest real flower request still failed after Laya declined a valid design. Do not report it as printed.
-2. **Review grounding.** Remove the empty `failed .` suffix, include the real design description, and distinguish physical checks from unverified appearance. Preserve actual model choices.
-3. **User-goal visibility.** Retain the unfinished user request and explanation when autonomous goals resume after failure.
-4. **Timed actions.** Update the legacy eating test, which assumed immediate consumption. Verify range, ownership, bounded force, actual effects, plan advancement and depleted-food persistence.
-5. **Capability coverage.** Add comprehensive metadata/action tests and explicit throw/push/give/drop plan coverage. Support approaching real controllers without generated designs. Recheck token budgets after richer metadata.
+2. **Review grounding.** Text grounding and the empty failure suffix are fixed and tested. Still playtest actual model review behavior and generated object fidelity; preserve real choices.
+3. **User-goal visibility.** Saved `lastUserGoal` now retains the unfinished request and explanation. The UI status/retry presentation is in progress.
+4. **Timed actions.** Timing, range, ownership, force, actual effects and food persistence now pass offline checks. Still verify physical pose timing and complete plans during gameplay.
+5. **Capability coverage.** Seven dedicated tests cover explicit action plan requirements, capabilities, controllers, ownership, force, recipients and persistence. Current tokenizer tests pass; expand stress coverage as needs and objects grow.
 6. **UI polish.** Color-code verification, thinking, action and observation cards without changing their format or printer purple. Reduce the bottom inset that clips a long printer card header. Remove consumed objects from rendering and guard asynchronous loads across scene resets.
 7. **Printer feedback.** Align the bilateral typing pose with a visible keyboard/screen. Add a quiet accepted-prompt double bell with gesture unlock, mute, and no historical replay.
 8. **Neighborhood scene.** Move the printer to the left fence and rotate it 90 degrees inward; remove square floor tiles; add a bright street backdrop and decorative passing cars. Use shared physics/perception/visual layout coordinates.
@@ -44,7 +48,8 @@ Read the scoped handoffs before editing overlapping files:
 - New diagnostics: 8/8 offline tests and syntax checks passed.
 - Timed object jobs: 8/8 manual-mode tests passed.
 - New capabilities: syntax and focused mock checks passed; dedicated coverage pending.
-- Combined source checkpoint: `node --test tests/*.test.mjs` ran 84 tests; **82 passed, 2 failed**. Both failures are in `tests/agents.test.mjs`: the finite-food test assumes immediate eating rather than stepping the new timed job; the reflection/capabilities test expects `/unavailable/` while invalid fixture actions now report `This fixture only supports approach and inspection`. Update those assertions meaningfully and rerun. No live goals were submitted for this push.
+- Initial combined checkpoint: 82/84 tests passed, with two obsolete assumptions in `tests/agents.test.mjs`.
+- Current fix milestone: `node --test tests/*.test.mjs` passes **97/97**. No live goals were submitted for this milestone; model-driven playtesting follows visual integration.
 
 ## Resume order
 

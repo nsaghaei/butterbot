@@ -1,6 +1,6 @@
 # Maker Garden
 
-For the GitHub checkpoint overview, portable configuration, known failures and continuation plan, start with the [repository README](../../README.md) and [handoff](../../HANDOFF.md). The notes below describe the existing development installation; its machine-specific paths must be configured for another computer. The newer source checkpoint passes 82/84 tests; see the handoff for the two pending assertion updates.
+For the overview, portable configuration, known issues and continuation plan, start with the [repository README](../../README.md) and [handoff](../../HANDOFF.md). The notes below describe the existing development installation; configure its machine-specific paths on another computer. The first fix milestone passes 97/97 regression tests; visual integration and real-model playtesting are in progress.
 
 Open **http://127.0.0.1:8790/**. Tell Agent Wobble a goal in the bottom composer. The character chooses feasible actions, walks around, inspects objects, uses supported objects, and pursues its own needs between your requests. The printer is one available activity.
 

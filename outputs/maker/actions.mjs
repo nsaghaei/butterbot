@@ -1,12 +1,13 @@
 import {objectInfo,worldObjects} from './perception.mjs';
 import {retrieveMemory} from './memory.mjs';
 import {attributesFor,liftingBlocker,capabilityBlockers} from './object-attributes.mjs';
-export const LANDMARKS={sunny_pad:{x:1,z:1},flower_bed:{x:6,z:-5},quiet_patch:{x:-2,z:5},printer:{x:-5,z:-.8}};
+import {PRINTER} from './environment-layout.mjs';
+export const LANDMARKS={sunny_pad:{x:1,z:1},flower_bed:{x:6,z:-5},quiet_patch:{x:-2,z:5},printer:{x:PRINTER.approach.x,z:PRINTER.approach.z}};
 export const ACTIONS=['observe','move','approach','pick_up','place','drop','throw','push','give','inspect','use','print','rest','dance','eat','think','speak','ask_for_help'];
 export function validatePlanCoverage(objective,steps){
-  const t=objective.toLowerCase(),actions=steps.map(s=>s.action);for(const [pattern,action]of [[/\bdance\b/,'dance'],[/\brest\b/,'rest'],[/\beat\b/,'eat'],[/\bpick up\b/,'pick_up']])if(pattern.test(t)&&!new RegExp("(?:don't|do not|without) "+action.replace('_',' ')).test(t)&&!actions.includes(action))throw Error('Plan omitted explicitly requested action: '+action);
+  const t=objective.toLowerCase(),actions=steps.map(s=>s.action);for(const [pattern,action]of [[/\bdance\b/g,'dance'],[/\brest\b/g,'rest'],[/\beat\b/g,'eat'],[/\bpick up\b/g,'pick_up'],[/\bthrow\b/g,'throw'],[/\bpush\b/g,'push'],[/\bgive\b/g,'give'],[/\bdrop\b/g,'drop']])if([...t.matchAll(pattern)].some(match=>!/(?:don't|do not|never|without)\s+$/.test(t.slice(0,match.index)))&&!actions.includes(action))throw Error('Plan omitted explicitly requested action: '+action);
   if(/\b(place|put)\b/.test(t)&&!/\b(print|create|make)\b/.test(t)&&!actions.includes('place'))throw Error('Plan omitted placing the existing object');
-  const coords=[...t.matchAll(/\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g)];for(const m of coords)if(!steps.some(a=>['move','place'].includes(a.action)&&Math.abs(a.x-Number(m[1]))<.01&&Math.abs(a.z-Number(m[2]))<.01))throw Error('Plan omitted requested coordinates '+m[0]);
+  const coords=[...t.matchAll(/\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g)];for(const m of coords)if(!steps.some(a=>['move','place','throw','push'].includes(a.action)&&Math.abs(a.x-Number(m[1]))<.01&&Math.abs(a.z-Number(m[2]))<.01))throw Error('Plan omitted requested coordinates '+m[0]);
   if(/\bcircle\b/.test(t)){const moves=steps.filter(s=>s.action==='move');if(moves.length<4||Math.hypot(moves[0].x-moves.at(-1).x,moves[0].z-moves.at(-1).z)>1.5)throw Error('A circular route needs at least four waypoints forming a closed loop');}
   return true;
 }
@@ -60,6 +61,7 @@ export function validateAction(garden,brain,a){
   if(POINT_ACTIONS.has(a.action))checkPoint(a);
   if(PHYSICAL_ACTIONS.has(a.action)&&!entity?.design)throw Error('This fixture only supports approach and inspection');
   if(PHYSICAL_ACTIONS.has(a.action))checkCapability(entity,a);
+  if(['pick_up','use','eat'].includes(a.action)&&entity.carrier&&entity.carrier!==brain.actorId)throw Error(entity.design.name+' is held by another character');
   if(a.action==='pick_up'){
     const blocker=liftingBlocker(entity);if(blocker)throw Error(blocker);
     if(entity.carried||entity.carrier)throw Error(entity.design.name+' is already being carried');
@@ -99,6 +101,7 @@ export function feasibleActions(garden,brain){
   }
   for(const fixture of worldObjects(garden).filter(e=>e.kind==='fixture'))offered.push({action:distance(p,fixture.approach||fixture.position)<=1.7?'inspect':'approach',target:fixture.id,label:'Examine '+fixture.name});
   for(const e of garden.physics.entities.values()){
+    if(e.controller&&!e.design&&e.id!==brain.actorId){const info=objectInfo(garden,e.id);offered.push({action:distance(p,info.position)<=1.7?'inspect':'approach',target:e.id,label:'Approach and observe '+info.name});continue;}
     if(!e.design)continue;const position=garden.physics.position(e),near=distance(p,position)<2.7;
     if(!near){offered.push({action:'approach',target:e.id,label:'Approach '+e.design.name});continue;}
     offered.push({action:'inspect',target:e.id,label:'Inspect '+e.design.name});
@@ -110,6 +113,6 @@ export function feasibleActions(garden,brain){
   }
   return offered.filter(a=>{try{validateAction(garden,brain,a);return true;}catch{return false;}});
 }
-export function conciseWorld(garden,brain){const objects=worldObjects(garden);return {capabilities:ACTIONS,stage:brain.stage,blocker:brain.error||null,availableActions:feasibleActions(garden,brain).slice(0,24),physicalLimits:{liftMassKg:12,carryMaxDimensionM:2,pushMassKg:130,giftDistanceM:2},actor:{id:brain.actorId,name:brain.actorName,core:brain.core,style:brain.style,memory:retrieveMemory(brain,brain.objective,3),memoryCatalog:brain.memory.map(m=>({id:m.id,kind:m.kind,updatedAt:m.updatedAt,lastUsed:m.lastUsed})),position:brain.actor.body.translation(),needs:brain.needs,inventory:[...garden.physics.entities.values()].filter(e=>e.carrier===brain.actorId).map(e=>e.id)},characters:[...garden.physics.entities.values()].filter(e=>e.controller).map(e=>({id:e.id,name:e.name||e.design?.name||e.id,position:{...garden.physics.position(e)},held:[...garden.physics.entities.values()].filter(o=>o.carrier===e.id).map(o=>o.id)})),lastObservation:brain.lastObservation||null,lastInspection:brain.lastInspection||null,landmarks:LANDMARKS,objects,actionBlockers:objects.filter(o=>Object.keys(o.blockedActions).length).map(o=>({id:o.id,name:o.name,blocked:o.blockedActions})),printer:{owner:garden.printerOwner,queue:garden.queue},recentOutcomes:brain.logs.filter(l=>l.type==='action_outcome').slice(-3).map(l=>l.outcome)};}
+export function conciseWorld(garden,brain){const objects=worldObjects(garden);return {capabilities:ACTIONS,stage:brain.stage,blocker:brain.error||null,availableActions:feasibleActions(garden,brain).slice(0,24),physicalLimits:{liftMassKg:12,carryMaxDimensionM:2,pushMassKg:130,giftDistanceM:2},actor:{id:brain.actorId,name:brain.actorName,core:brain.core,style:brain.style,memory:retrieveMemory(brain,brain.objective,3),memoryCatalog:brain.memory.map(m=>({id:m.id,kind:m.kind,updatedAt:m.updatedAt,lastUsed:m.lastUsed})),position:brain.actor.body.translation(),needs:brain.needs,inventory:[...garden.physics.entities.values()].filter(e=>e.carrier===brain.actorId).map(e=>e.id)},characters:[...garden.physics.entities.values()].filter(e=>e.controller).map(e=>({id:e.id,name:e.name||e.design?.name||e.id,position:{...garden.physics.position(e)},held:[...garden.physics.entities.values()].filter(o=>o.carrier===e.id).map(o=>o.id)})),lastObservation:brain.lastObservation||null,lastInspection:brain.lastInspection||null,landmarks:LANDMARKS,objects,printer:{owner:garden.printerOwner,queue:garden.queue},recentOutcomes:brain.logs.filter(l=>l.type==='action_outcome').slice(-3).map(l=>l.outcome)};}
 
 

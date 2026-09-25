@@ -29,14 +29,14 @@ const server=http.createServer(async(req,res)=>{
       if(url.pathname==='/api/actions')return json(res,200,world.snapshot().actions);
       if(url.pathname.startsWith('/api/design/')){const design=world.designs[url.pathname.split('/').at(-1)];return json(res,design?200:404,design||{error:'Unknown design'});}
       if(url.pathname==='/api/events'){res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache','Connection':'keep-alive'});res.write(`data: ${JSON.stringify(world.snapshot())}\n\n`);clients.add(res);req.on('close',()=>clients.delete(res));return;}
-      const files={'/':'web-next/index.html','/app.js':'web-next/app.js','/avatars.js':'web-next/avatars.js','/style.css':'web-next/style.css','/three.js':'node_modules/three/build/three.module.js','/three.core.js':'node_modules/three/build/three.core.js','/OrbitControls.js':'node_modules/three/examples/jsm/controls/OrbitControls.js','/favicon.svg':'web/favicon.svg'};
+      const files={'/':'web-next/index.html','/app.js':'web-next/app.js','/avatars.js':'web-next/avatars.js','/environment-layout.mjs':'environment-layout.mjs','/style.css':'web-next/style.css','/three.js':'node_modules/three/build/three.module.js','/three.core.js':'node_modules/three/build/three.core.js','/OrbitControls.js':'node_modules/three/examples/jsm/controls/OrbitControls.js','/favicon.svg':'web/favicon.svg'};
       const file=files[url.pathname];if(!file)return json(res,404,{error:'Not found'});let content=await readFile(file.startsWith('node_modules/')&&process.env.SHARED_NODE_MODULES?path.join(process.env.SHARED_NODE_MODULES,file.slice(13)):path.join(root,file));if(file.endsWith('OrbitControls.js'))content=Buffer.from(content.toString().replace("from 'three'","from '/three.js'"));res.writeHead(200,{'Content-Type':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/javascript'});res.end(content);return;
     }
     if(req.method==='POST'){
       const data=await body(req),brain=world.brains.get(data.actorId||world.selectedActor);if(!brain)throw Error('Unknown character');
       if(url.pathname==='/api/select'){world.selectedActor=brain.actorId;return json(res,200,{ok:true});}
       if(url.pathname==='/api/objective'){if(typeof data.objective!=='string'||!data.objective.trim()||data.objective.length>240)throw Error('Please use a goal of 1–240 characters');world.assign(brain.actorId,data.objective.trim());await save();return json(res,200,{ok:true});}
-      if(url.pathname==='/api/resume'){world.assign(brain.actorId,brain.objective);return json(res,200,{ok:true});}
+      if(url.pathname==='/api/resume'){world.assign(brain.actorId,brain.lastUserGoal?.status==='failed'?brain.lastUserGoal.text:brain.objective);return json(res,200,{ok:true});}
       // Automated verification APIs; the user interface exposes character communication only.
       if(url.pathname==='/api/control'){
         if(data.paused!==undefined){if(typeof data.paused!=='boolean')throw Error('Invalid pause');world.paused=data.paused;for(const b of world.brains.values()){b.paused=data.paused;b.revision++;}}
