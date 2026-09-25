@@ -1,0 +1,379 @@
+{
+  "description": "Authored gift QA case: consent after verified creation and pickup, recipient replanning around an occupied walking destination. No private history or memories.",
+  "actor": {
+    "id": "pip",
+    "name": "Pip",
+    "style": "playful, gentle, observant",
+    "interests": [
+      "play",
+      "company"
+    ],
+    "position": {
+      "x": -1.929295539855957,
+      "y": 1.1650999784469604,
+      "z": 5.0000457763671875
+    },
+    "needs": {
+      "energy": 74.01566666662197,
+      "fun": 24.46550000000297,
+      "hunger": 15.500875000003086,
+      "hygiene": 41.22125000003527,
+      "social": 70.16375624982521,
+      "comfort": 57.78508124994306
+    },
+    "objective": "Take a walk to the sunny pad.",
+    "goalSource": "self",
+    "stage": "action_plan",
+    "planSteps": [
+      {
+        "action": "move",
+        "target": "",
+        "recipient": "",
+        "x": 1,
+        "z": 1,
+        "speed": 1,
+        "strength": 0,
+        "use": "",
+        "seconds": 3,
+        "label": "Walk to the sunny pad"
+      }
+    ],
+    "planIndex": 0
+  },
+  "objects": [
+    {
+      "id": "printer",
+      "name": "Idea printer",
+      "kind": "fixture",
+      "position": {
+        "x": -11.45,
+        "y": 1,
+        "z": 0
+      },
+      "attributes": {
+        "portable": false,
+        "anchored": true,
+        "edible": false,
+        "servings": 0,
+        "throwable": false,
+        "maxThrowSpeed": 0,
+        "giftable": false,
+        "pushable": false
+      },
+      "affordances": [
+        "print"
+      ],
+      "mass": null,
+      "dimensions": [
+        2.6,
+        2,
+        3.4
+      ],
+      "edible": false,
+      "servings": 0
+    },
+    {
+      "id": "planter",
+      "name": "Flower bed",
+      "kind": "fixture",
+      "position": {
+        "x": 6,
+        "y": 0.5,
+        "z": -7
+      },
+      "attributes": {
+        "portable": false,
+        "anchored": true,
+        "edible": false,
+        "servings": 0,
+        "throwable": false,
+        "maxThrowSpeed": 0,
+        "giftable": false,
+        "pushable": false
+      },
+      "affordances": [
+        "inspect"
+      ],
+      "mass": null,
+      "dimensions": [
+        4,
+        1,
+        1.6
+      ],
+      "edible": false,
+      "servings": 0
+    },
+    {
+      "id": "item-1",
+      "name": "Orange Tulip",
+      "kind": "prop",
+      "position": {
+        "x": 1.4400544166564941,
+        "y": 0.24849414825439453,
+        "z": 0.6589106917381287
+      },
+      "attributes": {
+        "portable": true,
+        "anchored": false,
+        "edible": false,
+        "servings": 0,
+        "throwable": true,
+        "maxThrowSpeed": 5,
+        "giftable": true,
+        "pushable": true
+      },
+      "affordances": [
+        "display"
+      ],
+      "mass": 1.2,
+      "dimensions": [
+        0.75,
+        1.1250000484287739,
+        0.5
+      ],
+      "heldBy": null,
+      "owner": "pip",
+      "edible": false,
+      "servings": 0
+    },
+    {
+      "id": "home-bed",
+      "name": "Garden daybed",
+      "kind": "prop",
+      "position": {
+        "x": 6,
+        "y": 0.5550000071525574,
+        "z": 5
+      },
+      "attributes": {
+        "portable": false,
+        "anchored": true,
+        "edible": false,
+        "servings": 0,
+        "throwable": false,
+        "maxThrowSpeed": 0,
+        "giftable": false,
+        "pushable": false
+      },
+      "affordances": [
+        "rest"
+      ],
+      "mass": 48,
+      "dimensions": [
+        1.350000023841858,
+        1.0700000488758088,
+        2.284999966621399
+      ],
+      "heldBy": null,
+      "owner": "actor",
+      "edible": false,
+      "servings": 0
+    },
+    {
+      "id": "garden-shower",
+      "name": "Garden shower",
+      "kind": "prop",
+      "position": {
+        "x": 7,
+        "y": 1.3774999380111694,
+        "z": -3
+      },
+      "attributes": {
+        "portable": false,
+        "anchored": true,
+        "edible": false,
+        "servings": 0,
+        "throwable": false,
+        "maxThrowSpeed": 0,
+        "giftable": false,
+        "pushable": false
+      },
+      "affordances": [
+        "wash"
+      ],
+      "mass": 72,
+      "dimensions": [
+        1.649999976158142,
+        2.714999912828207,
+        1.649999976158142
+      ],
+      "heldBy": null,
+      "owner": "actor",
+      "edible": false,
+      "servings": 0
+    },
+    {
+      "id": "park-bench",
+      "name": "Park bench",
+      "kind": "prop",
+      "position": {
+        "x": 2,
+        "y": 0.6299999952316284,
+        "z": -5
+      },
+      "attributes": {
+        "portable": false,
+        "anchored": true,
+        "edible": false,
+        "servings": 0,
+        "throwable": false,
+        "maxThrowSpeed": 0,
+        "giftable": false,
+        "pushable": false
+      },
+      "affordances": [
+        "sit"
+      ],
+      "mass": 36,
+      "dimensions": [
+        1.7000000476837158,
+        1.2200000298023224,
+        0.6400000154972076
+      ],
+      "heldBy": null,
+      "owner": "actor",
+      "edible": false,
+      "servings": 0
+    },
+    {
+      "id": "snack-bowl",
+      "name": "Bowl of oranges",
+      "kind": "prop",
+      "position": {
+        "x": 2.0509300231933594,
+        "y": 0.15094339847564697,
+        "z": 1.3892184495925903
+      },
+      "attributes": {
+        "portable": true,
+        "anchored": false,
+        "edible": true,
+        "servings": 1,
+        "throwable": false,
+        "maxThrowSpeed": 0,
+        "giftable": true,
+        "pushable": true
+      },
+      "affordances": [
+        "display"
+      ],
+      "mass": 1.8,
+      "dimensions": [
+        0.6899999976158142,
+        0.30499998666346073,
+        0.6899999976158142
+      ],
+      "heldBy": null,
+      "owner": "actor",
+      "edible": true,
+      "servings": 1
+    },
+    {
+      "id": "item-6",
+      "name": "Small Edible Orange",
+      "kind": "prop",
+      "position": {
+        "x": -8.064796447753906,
+        "y": 1.4435210227966309,
+        "z": 0.6370317935943604
+      },
+      "attributes": {
+        "portable": true,
+        "anchored": false,
+        "edible": true,
+        "servings": 1,
+        "throwable": true,
+        "maxThrowSpeed": 5,
+        "giftable": true,
+        "pushable": true
+      },
+      "affordances": [
+        "display"
+      ],
+      "mass": 0.15,
+      "dimensions": [
+        0.20999999344348907,
+        0.2522797896526754,
+        0.2149999961256981
+      ],
+      "heldBy": "actor",
+      "owner": "actor",
+      "edible": true,
+      "servings": 1
+    }
+  ],
+  "invitation": {
+    "sessionId": "social-6",
+    "partner": {
+      "id": "actor",
+      "name": "Butterbot",
+      "style": "inventive, curious, gently theatrical",
+      "position": {
+        "x": -8.682096481323242,
+        "y": 1.1650999784469604,
+        "z": 0.021734675392508507
+      }
+    },
+    "topic": "Print a small edible orange, pick it up, and give it to Pip.",
+    "object": {
+      "id": "item-6",
+      "name": "Small Edible Orange",
+      "kind": "prop",
+      "mass": 0.15,
+      "dimensions": [
+        0.20999999344348907,
+        0.2522797896526754,
+        0.2149999961256981
+      ],
+      "position": {
+        "x": -8.064796447753906,
+        "y": 1.4435210227966309,
+        "z": 0.6370317935943604
+      },
+      "attributes": {
+        "portable": true,
+        "anchored": false,
+        "edible": true,
+        "throwable": true,
+        "giftable": true,
+        "pushable": true,
+        "servings": 1,
+        "maxThrowSpeed": 5
+      },
+      "heldBy": "actor"
+    }
+  },
+  "error": "Not executed: Walking destination is occupied by Orange Tulip (item-1). Use approach with target=\"item-1\" to interact with that object; choose a clear ground point for move.",
+  "navigationFailure": {
+    "action": "move",
+    "destination": {
+      "x": 1,
+      "z": 1
+    },
+    "reason": "Not executed: Walking destination is occupied by Orange Tulip (item-1). Use approach with target=\"item-1\" to interact with that object; choose a clear ground point for move.",
+    "blocker": {
+      "id": "item-1",
+      "name": "Orange Tulip",
+      "kind": "prop"
+    },
+    "destinationCheck": {
+      "clear": false,
+      "position": {
+        "x": 1,
+        "y": 1.1849999999999998,
+        "z": 1
+      },
+      "blocker": {
+        "id": "item-1",
+        "name": "Orange Tulip",
+        "kind": "prop"
+      }
+    }
+  },
+  "question": "Accept this offered object?",
+  "choices": {
+    "accept": "Accept and receive the object",
+    "decline": "Decline and keep my hands free"
+  },
+  "previousMinimum": 377
+}

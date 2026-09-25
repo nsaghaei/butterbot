@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {Garden} from '../garden.mjs';import {goalCandidates,criticalNeedPlan} from '../autonomy.mjs';import {Providers} from '../providers.mjs';
-import {compileDesign} from '../design.mjs';import {validatePlanTargets,validatePlanCoverage} from '../actions.mjs';
+import {compileDesign} from '../design.mjs';import {validatePlanTargets,validatePlanCoverage,validateAction,LANDMARKS} from '../actions.mjs';
 const provider=()=>({generator:{ready:true},laya:{ready:true},healthTime:Date.now(),calls:{},actionPlan:async(_b,facts)=>({value:{supported:true,steps:structuredClone(facts.planning.engineProposal.steps)}}),decide:async(state,q,choices)=>({response:{choice:Object.keys(choices)[0]}}),verifyStep:async()=>({value:{complete:true,explanation:'Engine action completed.'}})});
 test('Laya selects self goals from needs; user assignment overrides them; needs change during idle',async()=>{const g=new Garden({providers:provider()});try{const b=g.selected;b.needs.energy=40;await b.poll();assert.equal(b.goalSource,'self');assert.match(b.objective,/Rest/);assert.ok(b.logs.some(l=>l.scope==='goal'&&l.status==='accepted'));g.assign('actor','Walk to (2,3).');assert.equal(b.goalSource,'user');assert.equal(b.stage,'action_plan');const before={...b.needs};for(let i=0;i<60;i++)g.step();assert.ok(b.needs.energy<before.energy);assert.ok(b.needs.fun<before.fun);assert.ok(b.needs.hunger>before.hunger);}finally{g.physics.dispose();}});
 test('critical energy interruption records the temporary goal and resumes the user plan',async()=>{const g=new Garden({providers:provider()});try{const b=g.selected;g.assign('actor','Walk to (2,3).');b.stage='action_decide';b.planSteps=[{action:'move',x:2,z:3,label:'Walk to (2,3)'}];b.needs.energy=5;await b.poll();assert.equal(b.goalSource,'need interruption');assert.equal(b.stage,'action_decide');assert.equal(b.job,null);b.nextCall=0;await b.poll();assert.equal(b.job.action,'rest');for(let i=0;i<430;i++)g.step();assert.equal(b.stage,'awaiting_step_done');assert.equal(b.goalSource,'need interruption');b.nextCall=0;await b.poll();assert.equal(b.stage,'verify_step');b.nextCall=0;await b.poll();assert.equal(b.goalSource,'user');assert.equal(b.objective,'Walk to (2,3).');assert.equal(b.stage,'action_decide');assert.equal(b.suspendedGoal,null);assert.ok(b.needs.energy>20);assert.ok(b.logs.some(l=>l.status==='resumed'));}finally{g.physics.dispose();}});
@@ -11,6 +11,18 @@ test('provider activity is keyed by actor/provider/token and one completion cann
 const orange=await compileDesign({name:'Clementine',description:'One edible clementine.',kind:'prop',mass:.2,affordances:['display'],attributes:{edible:true,servings:1},code:'const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.SphereGeometry(.15,8,6),new THREE.MeshToonMaterial({color:0xff9933})));return g;'});
 orange.material='food';
 function foodAt(g,name,x,z){return g.physics.add({...structuredClone(orange),name},{x,y:.3,z});}
+
+test('autonomous outings skip currently occupied landmark destinations without moving objects or spending a decision',()=>{
+  const g=new Garden({providers:provider(),seedFood:false});try{
+    const b=g.selected;b.needs={energy:100,hunger:0,fun:100,hygiene:100,comfort:100,social:100};
+    const original=goalCandidates(b).find(goal=>goal.id==='explore');assert.equal(original.steps[0].x,LANDMARKS.sunny_pad.x);assert.equal(original.steps[0].z,LANDMARKS.sunny_pad.z);
+    const blocked=foodAt(g,'Dropped orange',1,1),before={...g.physics.position(blocked)};
+    const next=goalCandidates(b).find(goal=>goal.id==='explore');assert.ok(next);assert.notDeepEqual({x:next.steps[0].x,z:next.steps[0].z},LANDMARKS.sunny_pad);assert.doesNotThrow(()=>validateAction(g,b,next.steps[0]));assert.deepEqual({...g.physics.position(blocked)},before);
+    for(const [name,point]of Object.entries(LANDMARKS))if(!['printer','sunny_pad'].includes(name))foodAt(g,name,point.x,point.z);
+    assert.ok(!goalCandidates(b).some(goal=>goal.id==='explore'));assert.ok(goalCandidates(b).some(goal=>goal.id==='observe'));assert.equal(b.stage,'goal_select');assert.equal(b.logs.length,0);
+    g.physics.remove(blocked.id);assert.equal(goalCandidates(b).find(goal=>goal.id==='explore').text,original.text);
+  }finally{g.physics.dispose();}
+});
 
 test('urgent hunger offers only actual nearest food, using its name and respecting ownership and reservations',()=>{
   const g=new Garden({providers:provider(),seedFood:false});try{const b=g.selected,p=b.actor.body.translation(),near=foodAt(g,'Clementine',p.x+1,p.z),far=foodAt(g,'Lunch pear',p.x+5,p.z);b.needs={hunger:95,energy:40,fun:5};
