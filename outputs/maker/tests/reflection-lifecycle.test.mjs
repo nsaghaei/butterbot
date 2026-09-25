@@ -38,3 +38,13 @@ test('a rejected generated memory edit retains the exact reflection request and 
     assert.equal(record.status,'failed');assert.match(record.error,/unknown entry/);assert.equal(record.prompt,'Complete current memory store: []');assert.deepEqual(record.result,result);assert.equal(record.elapsedMs,25);assert.deepEqual(record.usage,{output:20});assert.equal(brain.memory.length,0);assert.equal(brain.thought,undefined);
   }finally{garden.physics.dispose();}
 });
+
+test('a reflection that fails before parsing keeps bounded provider diagnostics without applying any memory',async()=>{
+  const diagnostics={prompt:'Current completed gift and own memories',raw:'{"thought":"Pip has the orange","memory":[',finishReason:'length',usage:{outputTokens:600},elapsedMs:8000};
+  const error=Object.assign(new SyntaxError('Unterminated JSON'),{diagnostics});
+  const garden=new Garden({providers:{provider:'test',reflect:async()=>{throw error;}},seedFood:false});try{
+    const brain=garden.selected;brain.memory=[{id:'existing',text:'Earlier experience',kind:'experience'}];const before=structuredClone(brain.memory);
+    await brain.reflect('An action completed');const record=brain.logs.at(-1);
+    assert.equal(record.status,'failed');assert.equal(record.error,'Unterminated JSON');assert.deepEqual(record.diagnostics,diagnostics);assert.deepEqual(brain.memory,before);assert.equal(brain.thought,undefined);
+  }finally{garden.physics.dispose();}
+});

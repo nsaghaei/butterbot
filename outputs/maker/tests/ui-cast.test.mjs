@@ -75,6 +75,12 @@ test('a failed social model turn reports its error instead of implying speech wa
   const h=helpers(),html=h.socialModelMarkup({type:'social_model',status:'failed',time:4,error:'Provider unavailable'}, {actorId:'pip',actorName:'Pip'});assert.match(html,/Speech generation failed/);assert.match(html,/Provider unavailable/);assert.ok(!html.includes('Generated only'));assert.ok(!html.includes('proposed words'));
 });
 
+test('thought cards expose escaped model diagnostics and distinguish generation failure from spoken thought',()=>{
+  const h=helpers(),failed=h.reflectionMarkup({type:'reflection',time:4,status:'failed',error:'Incomplete JSON',diagnostics:{prompt:'A <current> request',raw:'{"speech":"<script>"',finishReason:'length'}});
+  assert.match(failed,/Thought unavailable/);assert.match(failed,/Actual input & output/);assert.match(failed,/A &lt;current&gt; request/);assert.match(failed,/&lt;script&gt;/);assert.match(failed,/finishReason/);assert.ok(!failed.includes('<script>'));assert.ok(!failed.includes('class="speech"'));
+  const accepted=h.reflectionMarkup({type:'reflection',time:5,status:'accepted',thought:'Pip has the orange.',speech:'Enjoy!',prompt:'Engine transfer evidence',result:{memory:[]}});assert.match(accepted,/Pip has the orange/);assert.match(accepted,/class="speech"/);assert.match(accepted,/Actual input & output/);assert.ok(!accepted.includes('Thought unavailable'));
+});
+
 test('queued conversation names the busy partner without implying acceptance or hiding their own activity',()=>{
   const h=helpers(),snapshot={actorId:'actor',stage:'socializing',actors:[{id:'actor',name:'Butterbot'},{id:'pip',name:'Pip'}],planSteps:[{action:'socialize',label:'Chat with Pip'}],social:{active:[{id:'social-3',initiatorId:'actor',partnerId:'pip',participants:['actor','pip'],phase:'waiting',accepted:false}],history:[]}};
   assert.equal(h.socialWaitingStatus(snapshot),'Waiting for Pip to finish their activity');assert.equal(h.planStatus(snapshot),'Waiting for Pip to finish their activity');

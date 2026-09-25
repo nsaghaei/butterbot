@@ -37,7 +37,7 @@ test('reflection exposes every editable memory text and ID beyond the three reca
   assert.deepEqual(history.observations,[{kind:'lastInspection',observedAt:null,ageSeconds:null,data:facts.lastInspection}]);assert.deepEqual(history.unattributedOutcomes,facts.recentOutcomes);
   assert.doesNotMatch(request.prompt,/private memory bookkeeping|updatedAt|lastUsed/);
   assert.deepEqual({world,facts},before,'preparing reflection must not mutate memory, recall or engine facts');
-  assert.equal(result.prompt,request.prompt);assert.deepEqual(request.schema,reflectionSchema(memory));assert.equal(request.maxTokens,600);assert.equal(request.schema.properties.memory.maxItems,3);
+  assert.equal(result.prompt,request.prompt);assert.deepEqual(request.schema,reflectionSchema(memory));assert.equal(request.maxTokens,1500);assert.equal(request.schema.properties.memory.maxItems,3);
 });
 
 test('reflection retains unrecalled conflicting facts and subjective kinds without inventing editable IDs',async()=>{
