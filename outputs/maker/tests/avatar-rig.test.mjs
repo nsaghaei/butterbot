@@ -7,6 +7,16 @@ const threeURL=import.meta.resolve('three');
 const source=(await readFile(new URL('../web-next/avatars.js',import.meta.url),'utf8')).replace("'/three.js'",JSON.stringify(threeURL));
 const {avatar,updateAvatar}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const mesh=(geometry,color,parent,position=[0,0,0])=>{const object=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({color}));object.position.set(...position);parent.add(object);return object;};
+test('Butterbot and Pip have independent connected bodies and visibly distinct palettes during conversation',()=>{
+  const butter=avatar('actor',{mesh}),pip=avatar('pip',{mesh}),base={position:{x:0,y:.95,z:0},heading:0,actionProgress:.5};
+  assert.notEqual(butter.userData.palette.shell,pip.userData.palette.shell);assert.notEqual(butter.userData.palette.teal,pip.userData.palette.teal);assert.notEqual(butter.userData.parts.head,pip.userData.parts.head);
+  for(const [id,model]of [['actor',butter],['pip',pip]])model.traverse(o=>assert.equal(o.userData.entityId,id));
+  for(let i=0;i<60;i++){
+    updateAvatar(butter,{...base,activity:'speak'});updateAvatar(pip,{...base,position:{x:2,y:.95,z:0},activity:'listen'});
+    for(const model of [butter,pip]){model.updateMatrixWorld(true);model.traverse(o=>assert.ok(o.matrixWorld.elements.every(Number.isFinite)));for(const chain of [...Object.values(model.userData.human.arms),...Object.values(model.userData.human.legs)]){const start=chain.upper.getWorldPosition(new THREE.Vector3()),joint=chain.lower.getWorldPosition(new THREE.Vector3()),end=chain.end.getWorldPosition(new THREE.Vector3());assert.ok(Math.abs(start.distanceTo(joint)-chain.lengths[0])<1e-6);assert.ok(Math.abs(joint.distanceTo(end)-chain.lengths[1])<1e-6);}}
+  }
+  assert.equal(butter.position.x,0);assert.equal(pip.position.x,2);assert.equal(butter.userData.human.head.rotation.x,0);assert.notEqual(pip.userData.human.head.rotation.x,0,'only the listener nods');
+});
 test('robot remains connected with fixed limb lengths through walking, object actions, washing and furniture poses',()=>{
 const model=avatar('actor',{mesh}),p=new Physics();let previous=p.snapshot()[0],checked=0;
 function check(e){

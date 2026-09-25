@@ -1,4 +1,4 @@
-param([string]$Release = 'v15')
+param([string]$Release = 'v18')
 $ErrorActionPreference = 'Stop'
 
 $appUrl = 'http://127.0.0.1:8790/'

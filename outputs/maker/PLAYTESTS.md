@@ -1,10 +1,46 @@
 # Gameplay verification
 
-These are observations from the actual local game using Gemma and Laya. Offline regressions are separate: **v15 passed 213/213; v14 208/208; v13 202/202; v12 196/196; v11 176/176; v10 162/162; v9 147/147**. Saved scenes, prompts and raw diagnostic exports stay outside Git.
+These are observations from the actual local game using Gemma and Laya. Offline regressions are separate: **v18 passed 275/275; v17 266/266; v16 252/252; v15 213/213; v14 208/208; v13 202/202; v12 196/196; v11 176/176; v10 162/162; v9 147/147**. Saved scenes, prompts and raw diagnostic exports stay outside Git.
+
+## September 25, 2026 — frozen v18
+
+Build `2026-09-25.18` is the current live release. **275/275 offline tests passed in 8.44 seconds.** Butterbot and Pip are both visible independent robots. This verifies the first duo milestone, not the full social simulation.
+
+| Check | Observed result |
+| --- | --- |
+| “Go chat with Pip about your favorite things in this garden.” | **Passed, cycle 178, 1/1 plan step verified.** Replayed the v17 failed save with Pip still walking. Gemma proposed `socialize`. Waiting began at 4862.60; Pip's existing walk was audited successfully at 4865.73; Laya accepted at 4866.02. Both approached and faced each other. No errors, retries or navigation recoveries occurred. |
+| Mid-speech pause/resume. | **Passed.** Butterbot's line lasted 5.48 seconds. A deliberate API pause at 2.0167 seconds into it, followed by the actual UI Resume, preserved the session. Pip then delivered a six-second reply. Both complete transcript turns were recorded at 4886.4. |
+| Actual social effects and final audit. | **11.48 seconds actual nearby participation.** The ten-second reward cap gave each robot social +40 and fun +6 once. Inference/availability waiting earned no reward. Gemma verified completion at 4890.48. The game was saved and paused afterward. |
+| Desktop, mobile and selected character panel. | Robots and speech bubble looked cohesive. At **375 × 812**, cast controls, needs, goal, feeds, memory and composer fit; normal viewport was restored. Browser console had **zero errors**. Selecting Pip showed **74.8% accept / 25.2% decline** and one memory from its delivered line. |
+| “Pick up the Orange Tulip (item-1), carry it over to Pip, and give it to Pip.” | **Passed, cycle 179, 3/3 steps verified:** pickup → approach → give. Pip finished its requested walk before the handoff, then self-planned eating. This verifies a **stationary recipient** only. |
+| Moving-recipient gift audit. | **Unfinished.** An offline audit found that a moving recipient can leave the 2 m transfer range, and a gift can fill hands during the recipient's own pickup job. Reservation and recipient-consent work remains necessary; the stationary live success does not establish moving-gift reliability. |
+
+Local ignored evidence: `evidence/v18-verified-conversation.json`. The current two-turn conversation can end on an unanswered question; longer exchanges, relationships, consensual gifts and clearer lifecycle records remain continuation work. See [SOCIAL_PLAN.md](SOCIAL_PLAN.md).
+
+## September 25, 2026 — frozen v17
+
+**266/266 offline tests passed**, but the real conversation attempt failed.
+
+| Check | Observed result |
+| --- | --- |
+| Same chat request, cycle 177. | **Failed availability race.** Approach to Pip succeeded and was verified while Pip started a self-directed walk. The following socialize action failed because Pip was unavailable. No pair session was created, so this attempt did not demonstrate the pause fix live. |
+
+v18 added waiting for a noncritical self-directed partner activity and its audit, then replayed this saved state successfully. Waiting still does not imply acceptance or permit overriding another user's work.
+
+## September 25, 2026 — frozen v16
+
+**252/252 offline tests passed**, but the first real conversation did not complete.
+
+| Check | Observed result |
+| --- | --- |
+| Same chat request, cycle 176. | Gemma proposed one socialize step and Laya accepted. The robots walked/faced each other; Butterbot's generated line began. Pausing for a screenshot around one second into its six-second delivery bumped participant revisions. Resuming canceled the session as changed participants and left Butterbot's job orphaned in socializing. **Zero fully delivered transcript turns and zero social effects.** |
+| Initial visual/browser check. | Both robots and the speaking pose were visible; browser reported zero errors during the initial check. This did not establish session completion or pause safety. |
+
+The ignored export `evidence/v16-paused-conversation-failure.json` preserves this failure. Later changes preserve participant revisions and phase deadlines during pause, finish stale canceled jobs safely, recover orphaned sessions on reload and share model slots across reset. v18 supplies the actual successful mid-speech replay; do not retroactively mark v16 successful.
 
 ## September 25, 2026 — frozen v15
 
-Build `2026-09-25.15` is the current live release. Gemma receives exact engine execution criteria and immutable completion evidence; compact Laya context separates verification prose from real engine blockers.
+Historical build `2026-09-25.15` established the following single-character outcomes. Gemma receives exact engine execution criteria and immutable completion evidence; compact Laya context separates verification prose from real engine blockers.
 
 | Check | Observed result |
 | --- | --- |
@@ -13,9 +49,9 @@ Build `2026-09-25.15` is the current live release. Gemma receives exact engine e
 | Duration and final placement. | First plan proposal `4700.6667`, first physical completion `4703.1`, final result `4747.8667`: **47.20 simulation seconds from plan proposal to completion**. Recorded release was `(2, 0.6825, 3)`, `carried:false`, `carrier:null`. The object settled near `(2.0062, 0.5614, 2.9574)`; later settling did not invalidate the actual release. |
 | “Eat the park bench.” | **Correctly rejected, cycle 175.** One unsupported activity plan explained that the wooden bench has `edible:false`. Zero actions and no three-attempt retry loop. |
 | Memory curation. | Reflections across cycles 174/175 consolidated **12 entries to eight**. Some duplicates remain; this is useful progress, not perfected semantic memory. |
-| Browser and visible cards. | Browser console error list was empty. Successful placement and refusal cards were visually verified. Minor issue: the refused no-plan request still says “Gemma is preparing the plan” in the collapsible plan row. Frozen v15 is unchanged; status-text polish remains future work. |
+| Browser and visible cards. | Browser console error list was empty. Successful placement and refusal cards were visually verified. Minor issue: the refused no-plan request still says “Gemma is preparing the plan” in the collapsible plan row. Frozen v15 remains unchanged; later UI source corrected that status text. |
 
-The export `evidence/v15-object-sequence.json` remains local ignored evidence. These successful runs do not complete the broader simulation; the [social milestone](SOCIAL_PLAN.md) remains a future two-character plan.
+The export `evidence/v15-object-sequence.json` remains local ignored evidence. These historical successes did not complete the broader simulation; the first [social milestone](SOCIAL_PLAN.md) was subsequently verified in v18.
 
 ## September 25, 2026 — frozen v14
 
@@ -38,7 +74,7 @@ Build `2026-09-25.13` replayed the original pre-v12 save, including its old recl
 | Mattress support, orientation and recovery. | Rest center approximately `y=0.87`, heading `π`, above the actual mattress and facing the pillow; screenshot verified. Bed rest added 27 energy points, reaching 90.32; comfort capped at 100. |
 | “Pick up the Orange Tulip (item-1), carry it to (-2,3), gently throw it toward (0,3) at 2 m/s, go retrieve it, and place it at (2,3).” | **Failed before any action, cycle 171.** Gemma generated eight plan steps. Laya decision preparation stopped with: “Objective and essential decision facts exceed checkpoint capacity; no facts were silently truncated”. The long object story did not pass. |
 
-The tested restore/support correction passed its reproduction. v14 addressed the initial context capacity and throw/retrieval guidance but exposed a false approach audit; v15 subsequently completed the full object sequence. The future [social milestone](SOCIAL_PLAN.md) is not complete.
+The tested restore/support correction passed its reproduction. v14 addressed the initial context capacity and throw/retrieval guidance but exposed a false approach audit; v15 subsequently completed the full object sequence. Social gameplay was not enabled in this historical release; see the later v18 milestone above.
 
 ## September 25, 2026 — frozen v12, mixed result
 
@@ -121,4 +157,4 @@ The left-fence printer, keyboard/screen, continuous lawn, neighborhood houses, p
 
 ## Remaining verification
 
-Fix the refused request's misleading empty-plan status, then continue accommodation edge checks, longer creation/use sequences, resource depletion, save/restore, memory consolidation and recovery after rejected model output. Review remaining poses and viewport sizes; the v9 mobile pass is a baseline. The long tulip sequence and bench refusal passed their recorded v15 runs, but broader single-character testing and future social work remain. Judge physical effects and recorded evidence, not completion text alone.
+Continue moving/busy-recipient gift reservations and consent; the v18 handoff used a stationary recipient. Improve two-turn conversation closure and noisy lifecycle records, then broaden real-model reassignment, critical-need, separation, timeout, reset/reload and provider-failure checks. Preserve unrelated user work and apply effects once. Continue accommodation edge checks, resource depletion, longer creation/use plans, memory consolidation and remaining poses/viewports. The recorded v18 mobile and pause/resume checks are successful baselines, not exhaustive coverage. Judge physical effects and recorded evidence, not generated completion text alone.

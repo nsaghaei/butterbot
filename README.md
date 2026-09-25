@@ -2,13 +2,15 @@
 
 A local, experimental life simulation where you give a character an objective and watch it plan, choose actions, remember observations, and interact with a physical world.
 
-The current game is **Maker Garden**: one character, a garden, and a printer that constructs objects from generated Three.js geometry. The larger goal is an expressive Sims-like neighborhood with useful memories, meaningful needs, distinct personalities, and creative solutions to player requests. That broader game is unfinished.
+The current game is **Maker Garden**: Butterbot and Pip, a garden, and a printer that constructs objects from generated Three.js geometry. The larger goal is an expressive Sims-like neighborhood with useful memories, meaningful needs, distinct personalities, and creative solutions to player requests. That broader game is unfinished.
 
 ## Current checkpoint
 
-The launcher selects **frozen v15**, build `2026-09-25.15`. **213/213 offline tests passed.** The full tulip pickup → carry → throw → retrieve → place request completed **all seven physical actions and all seven Gemma audits**, with no errors, rejected audits or navigation recoveries. Retrieval followed the actual landed object; placement recorded its release at the requested point.
+The launcher selects **frozen v18**, build `2026-09-25.18`. **275/275 offline tests passed.** The first two-robot conversation passed a real Gemma/Laya playtest: Butterbot waited for Pip's existing walk to finish and be verified, Pip accepted, both approached and faced each other, and each delivered a generated line. A deliberate pause during Butterbot's speech preserved the session; resuming completed both turns and Gemma verified the user goal.
 
-“Eat the park bench” was rejected by the first proposed plan with the precise wood/`edible:false` explanation and zero actions. The placement/refusal cards were visually verified and the browser console had no errors. Memory curation reduced 12 entries to eight, although duplicates remain. One UI follow-up: a refused request without a plan still shows “Gemma is preparing the plan” in the collapsed plan row. The broader Sims-like game remains unfinished.
+The conversation recorded 11.48 seconds of actual nearby participation. Its reward used the 10-second cap and applied social `+40` and fun `+6` to each robot once. No errors, retries or navigation recoveries occurred. This fixes the tested v16 pause cancellation and v17 moving-partner availability failure. Desktop robots and speech were visually checked. The 375 × 812 mobile layout fit both cast controls, needs, goal, feeds, memory and composer, with zero browser-console errors. Pip’s panel showed the actual acceptance probabilities: 74.8% accept and 25.2% decline.
+
+Earlier v15 tests completed the seven-action tulip carry/throw/retrieve/place sequence and rejected “Eat the park bench” before action. Memory curation reduced 12 entries to eight, although duplicates remain. The misleading empty-plan status is now corrected. Two-turn conversations can still end on an unanswered question; longer exchanges, relationships and consent-based gifting remain unfinished.
 
 v15 supplies Gemma the engine's exact completion criteria and immutable action-time evidence. Approaching means reaching the selected clear point beside an object, within 0.18 m, rather than touching its center. Placement is checked against the recorded release before gravity settles the object. Compact Laya context preserves the full objective, ordered plan and all object names/positions; full verification prose stays in diagnostics.
 
@@ -18,7 +20,7 @@ The garden has six decaying needs, a starter daybed, bench, physical shower and 
 
 Earlier verified runs include v11's complete wash → sit → bed-rest request and autonomous follow-on rest, and v9's exact walk/dance/observation and print-orange/eat requests. These remain historical results, not verification of every later change. See [PLAYTESTS.md](outputs/maker/PLAYTESTS.md) for outcomes and [HANDOFF.md](HANDOFF.md) for continuation work.
 
-The foundation includes user and autonomous goals, physical object interactions, persistence, bounded construction generation, diagnostics and deduplicated memories. Reflection receives the complete editable memory store, so Gemma can revise or forget paraphrases without automatic semantic deletion. The needs are energy, hunger, fun, hygiene, comfort and social. Butterbot is still the only active character: social need cannot be fulfilled alone, and distinct neighbors, conversations and a full sleep cycle remain unfinished. The [first social milestone](outputs/maker/SOCIAL_PLAN.md) is a continuation plan, not implemented social gameplay.
+The foundation includes independent user and autonomous goals, physical object interactions, persistence, bounded construction generation, diagnostics and deduplicated memories. Each robot has its own personality, needs and memory. Reflection receives the complete editable memory store, so Gemma can revise or forget paraphrases without automatic semantic deletion. The needs are energy, hunger, fun, hygiene, comfort and social. The [first social milestone](outputs/maker/SOCIAL_PLAN.md) is implemented and tested; a larger social simulation and full sleep cycle remain future work.
 
 ## How it works
 
@@ -28,7 +30,9 @@ Laya selects autonomous goals from grounded proposals; Gemma turns the chosen pr
 
 Objects have names, descriptions, positions, dimensions, weight, and supported interactions such as portable, edible, throwable, giftable, and anchored. An object named “orange” is only edible when its validated capabilities and material permit eating. Inspection and observation use engine metadata, not camera recognition.
 
-The activity panel keeps offered choices and model probabilities visible. Thoughts/decisions and memories start at equal height with an adjustable divider and independent scrolling. Cards distinguish printing, planning, verification, actions, observations, and failures. A stable destination marker matches the movement entry. On small screens, activity can collapse to give the garden more room. Click an object to view attributes and ask Butterbot to perform an available action. **Pause/Resume**, sound mute, persistent failed-request retry, and **Reset everything** are available. Reset clears generated objects, goals and mutable memories and restores the starter layout. Save upgrades install starter objects once; reloading preserves food depletion.
+Conversation is a physical `socialize` job between actual character brains. Laya accepts or declines an invitation; Gemma writes each speaker's short turn using that speaker's private memory, verified surroundings and already delivered dialogue. Generated words are proposals until timed nearby delivery completes. Waiting for availability or inference gives no social reward. Fresh scenes use two robots; saved casts are respected, and reset keeps the current cast.
+
+The activity panel keeps offered choices and model probabilities visible. Select Butterbot or Pip with the cast buttons to view that character's goals, needs and memories. Both robots have distinct colors and named thought/speech bubbles. Thoughts/decisions and memories start at equal height with an adjustable divider and independent scrolling. Cards distinguish printing, planning, verification, actions, observations, conversation and failures. Invitation cards show accept/decline probabilities; generated speech and delivered transcripts are labeled separately. A stable destination marker matches the movement entry. On small screens, activity can collapse to give the garden more room. Click an object or robot to inspect it and ask the selected character to perform an available action. **Pause/Resume**, sound mute, persistent failed-request retry, and **Reset everything** are available. Reset clears generated objects, goals and mutable memories and restores the starter layout. Save upgrades install starter objects once; reloading preserves food depletion.
 
 The neighborhood backdrop, passing cars, and printer feedback are visual presentation. Generated construction code runs inside a bounded QuickJS worker without host filesystem or network access. Motion combines navigation control and articulated physics; it is assisted rather than unassisted biomechanical locomotion.
 
@@ -100,10 +104,11 @@ From the repository root, run `node work/build-ui.cjs` to build the browser bund
 | `outputs/maker/needs.mjs`, `autonomy.mjs` | Need decay, physical fulfillment, starter objects and grounded goal proposals |
 | `outputs/maker/tests/` | Includes capsule destinations, clear furniture approaches, posture transitions and bounded navigation recovery |
 | `outputs/maker/execution-evidence.mjs` | Recorded completion evidence and shared navigation tolerance for verification |
-| `outputs/maker/releases/` | Immutable application checkpoints; launcher defaults to v15 |
+| `outputs/maker/social-jobs.mjs` | Paired conversation lifecycle, actual delivery, cancellation and mutual effects |
+| `outputs/maker/releases/` | Immutable application checkpoints; launcher defaults to v18 |
 | `outputs/maker/HANDOFF-*.md` | Scoped implementation notes; some describe earlier checkpoints |
 | `work/` | Tracked UI build and release scripts |
 
 Dependencies are pinned in `pnpm-lock.yaml`; bundled Ammo files retain their attribution. Model downloads, installed dependencies, logs, saved scenes, and raw playtest evidence are excluded from Git.
 
-The next milestone is a reliably useful and expressive single character. Correct the refused-plan status text and broaden persistence, cancellation, memory and object-interaction checks before enabling the planned second character.
+A subsequent live tulip gift completed pickup → approach → give, all three steps verified, after Pip finished walking. Moving-recipient range and hand reservations remain unresolved; recipient consent and relationship effects are not implemented. Continue those checks alongside conversation endings, logs, persistence and memory.
