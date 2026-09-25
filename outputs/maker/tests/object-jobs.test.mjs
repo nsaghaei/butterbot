@@ -37,16 +37,18 @@ test('push completion is supported by actual displacement after the shove',()=>{
   }finally{g.physics.dispose();}
 });
 
-test('gifting transfers a held object to a nearby character only during the gesture',()=>{
+test('gifting transfers a held object to a nearby consenting character only during the gesture',async()=>{
   const g=garden({cast:'ensemble'});try{const recipient=g.physics.entities.get('pip'),position={x:-1,y:1.2,z:4.6};recipient.body.setTranslation(position,true);recipient.rig.resetAt(position);const e=add(g,{}, {x:0,y:.3,z:3.6});start(g,{action:'pick_up',target:e.id});ticks(g,70);const b=start(g,{action:'give',target:e.id,recipient:'pip',label:'Give cube to Pip'});
-    ticks(g,30);assert.equal(e.carrier,'actor');assert.equal(outcome(b).action,'pick_up');ticks(g,25);assert.equal(e.carrier,'pip');assert.equal(e.owner,'pip');assert.equal(b.stage,'acting');ticks(g,35);
+    assert.equal(e.carrier,'actor');g.providers={...noModels,giftAcceptance:async()=>({choice:'accept'})};await g.social.nextRequest().run();
+    for(let i=0;i<600&&g.social.forActor('actor')?.phase!=='giving';i++)g.step();assert.equal(g.social.forActor('actor')?.phase,'giving');
+    ticks(g,30);assert.equal(e.carrier,'actor');assert.equal(outcome(b).action,'pick_up');ticks(g,25);assert.equal(e.carrier,'pip');assert.equal(e.owner,'pip');assert.equal(b.stage,'gifting');ticks(g,35);
     assert.equal(outcome(b).action,'give');assert.equal(outcome(b).status,'completed');assert.equal(e.carrier,'pip');assert.equal(b.stage,'awaiting_step_done');
   }finally{g.physics.dispose();}
 });
 
-test('giving rechecks recipient distance at contact and keeps the object when the recipient moves away',()=>{
-  const g=garden({cast:'ensemble'});try{const recipient=g.physics.entities.get('pip'),near={x:-1,y:1.2,z:4.6};recipient.body.setTranslation(near,true);recipient.rig.resetAt(near);const e=add(g,{}, {x:0,y:.3,z:3.6});start(g,{action:'pick_up',target:e.id});ticks(g,70);const b=start(g,{action:'give',target:e.id,recipient:'pip'});const far={x:8,y:1.2,z:7};recipient.body.setTranslation(far,true);recipient.rig.resetAt(far);ticks(g,60);
-    assert.equal(e.carrier,'actor');assert.equal(outcome(b).status,'failed');assert.match(outcome(b).outcome,/recipient|2m/);assert.equal(b.stage,'failed');
+test('giving rechecks recipient distance after consent and keeps the object when the recipient moves away',async()=>{
+  const g=garden({cast:'ensemble'});try{const recipient=g.physics.entities.get('pip'),near={x:-1,y:1.2,z:4.6};recipient.body.setTranslation(near,true);recipient.rig.resetAt(near);const e=add(g,{}, {x:0,y:.3,z:3.6});start(g,{action:'pick_up',target:e.id});ticks(g,70);const b=start(g,{action:'give',target:e.id,recipient:'pip'});g.providers={...noModels,giftAcceptance:async()=>({choice:'accept'})};await g.social.nextRequest().run();for(let i=0;i<600&&g.social.forActor('actor')?.phase!=='giving';i++)g.step();assert.equal(g.social.forActor('actor')?.phase,'giving');const far={x:8,y:1.2,z:7};recipient.body.setTranslation(far,true);recipient.rig.resetAt(far);ticks(g,60);
+    assert.equal(e.carrier,'actor');assert.equal(outcome(b).status,'failed');assert.match(outcome(b).outcome,/recipient|2m|separated/);assert.equal(b.stage,'failed');
   }finally{g.physics.dispose();}
 });
 

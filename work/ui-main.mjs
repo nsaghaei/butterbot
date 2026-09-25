@@ -77,7 +77,7 @@ function updatePrinterEvents(){
   for(const record of state.logs||[])if(record.type==='laya'&&!['goal','activity','step','social'].includes(record.scope)){if(!prime&&record.status==='accepted'&&acceptedPrompts.get(record.id)!=='accepted')accepted=true;acceptedPrompts.set(record.id,record.status);}
   bellPrimed=true;if(accepted)printerBell();updatePrinterScreen(state);
 }
-const stream=new EventSource('/api/events');stream.onmessage=event=>{prev=state;state=JSON.parse(event.data);received=performance.now();connectionAlive=true;if(prev&&state.epoch!==prev.epoch){for(const [id,o]of objects)if(id!=='actor'){disposeObject(o);objects.delete(id);}designs.clear();loading.clear();feedActor=null;if(previewGroup){disposeObject(previewGroup);previewGroup=null;previewKey=null;}}syncEntityObjects();for(const e of state.entities)void getDesign(e);updatePrinterEvents();renderUI();};stream.onerror=()=>{bellPrimed=false;connectionAlive=false;$('#busy').textContent='Reconnecting to the garden…';renderPauseControl();renderSelection();};
+const stream=new EventSource('/api/events');stream.onmessage=event=>{prev=state;state=JSON.parse(event.data);received=performance.now();connectionAlive=true;if(prev&&state.epoch!==prev.epoch){for(const [id,o]of objects)if(id!=='actor'){disposeObject(o);objects.delete(id);}designs.clear();loading.clear();feedActor=null;if(previewGroup){disposeObject(previewGroup);previewGroup=null;previewKey=null;}}syncEntityObjects();for(const e of state.entities)void getDesign(e);updatePrinterEvents();renderUI();};stream.onerror=()=>{bellPrimed=false;connectionAlive=false;$('#busy').textContent='Reconnecting to the garden…';renderPauseControl();renderRequestControls();renderSelection();};
 let feedActor=null;const rows=new Map(),memoryRows=new Map();
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
 function makeFeed(areaId,checkId,badgeId){
@@ -95,6 +95,32 @@ const activityFeed=makeFeed('panel-scroll','follow','feed-latest'),memoryFeed=ma
 function setActivityCollapsed(collapsed){$('main').classList.toggle('activity-collapsed',collapsed);$('#activity-toggle').setAttribute('aria-expanded',String(!collapsed));$('#activity-toggle-label').textContent=collapsed?'Show activity':'Hide activity';localStorage.setItem('garden-mobile-collapsed',String(collapsed));if(!collapsed)requestAnimationFrame(()=>{activityFeed.follow(false);memoryFeed.follow(false);});}
 setActivityCollapsed(localStorage.getItem('garden-mobile-collapsed')==='true');$('#activity-toggle').onclick=()=>setActivityCollapsed(!$('main').classList.contains('activity-collapsed'));
 function freshSnapshot(){return !!state&&connectionAlive&&performance.now()-received<3500;}
+let actorSelection=null,objectiveInFlight=false;
+function reconcileActorSelection(){
+  if(!actorSelection)return;
+  if(state?.epoch!==actorSelection.epoch||!state.actors?.some(a=>a.id===actorSelection.actorId)||(actorSelection.confirmed&&state.actorId===actorSelection.actorId&&freshSnapshot()))actorSelection=null;
+}
+function renderRequestControls(){
+  const blocked=!!actorSelection||objectiveInFlight||selectionInFlight||!freshSnapshot();
+  $('#objective-input').disabled=blocked;$('#send').disabled=blocked;$('#retry-request').disabled=blocked;$('#talk-form').setAttribute('aria-busy',String(!!actorSelection||objectiveInFlight));
+  for(const button of $$('#cast [data-actor]'))button.disabled=blocked;
+  if(actorSelection){const name=state.actors.find(a=>a.id===actorSelection.actorId)?.name||actorSelection.actorId;$('#talk-label').textContent='Switching to '+name+'…';$('#send').ariaLabel='Waiting for '+name+' selection';}
+  else if(state){$('#talk-label').textContent='Tell '+state.actorName+' something';$('#send').ariaLabel='Send to '+state.actorName;}
+}
+async function selectActor(actorId){
+  if(actorSelection||objectiveInFlight||selectionInFlight||!freshSnapshot()||!state.actors.some(a=>a.id===actorId)||actorId===state.actorId)return;
+  const request={actorId,epoch:state.epoch,confirmed:false};actorSelection=request;selected=null;renderUI();
+  try{await post('/api/select',{actorId});if(actorSelection===request)request.confirmed=true;}
+  catch(error){if(actorSelection===request){actorSelection=null;toast(error.message);}}
+  finally{reconcileActorSelection();renderUI();}
+}
+async function submitCharacterObjective(objective,clearInput=false){
+  if(!objective||actorSelection||objectiveInFlight||selectionInFlight||!freshSnapshot())return false;
+  const actorId=state.actorId,name=state.actorName,epoch=state.epoch;objectiveInFlight=true;renderRequestControls();renderSelection();
+  try{await post('/api/objective',{actorId,objective});if(state.epoch===epoch){if(clearInput)$('#objective-input').value='';const message='Sent to '+name;$('#send-status').textContent=message;setTimeout(()=>{if($('#send-status').textContent===message)$('#send-status').textContent='';},4000);}return true;}
+  catch(error){toast(error.message);return false;}
+  finally{objectiveInFlight=false;renderRequestControls();renderSelection();}
+}
 function renderPauseControl(){const paused=!!state?.control?.paused;$('#pause-state').hidden=!paused;$('#pause-control').textContent=pauseInFlight?'Please wait…':paused?'Resume':'Pause';$('#pause-control').setAttribute('aria-pressed',String(paused));$('#pause-control').disabled=pauseInFlight||!freshSnapshot();}
 $('#pause-control').onclick=async()=>{if(pauseInFlight||!freshSnapshot())return;pauseInFlight=true;renderPauseControl();try{await post('/api/control',{paused:!state.control.paused});}catch(error){toast(error.message);}finally{pauseInFlight=false;renderPauseControl();}};
 function scrollAnchor(area,selector){const top=area.getBoundingClientRect().top,node=[...area.querySelectorAll(selector)].find(n=>n.getBoundingClientRect().bottom>top);return node?{node,offset:node.getBoundingClientRect().top-top}:null;}
@@ -121,11 +147,20 @@ function socialWaitingStatus(snapshot){
   const partner=snapshot.actors?.find(a=>a.id===session.partnerId)?.name||snapshot.characters?.find(a=>a.id===session.partnerId)?.name||session.partnerId||'the other character';
   return 'Waiting for '+partner+' to finish their activity';
 }
+function socialActivityStatus(snapshot){
+  const waiting=socialWaitingStatus(snapshot);if(waiting)return waiting;
+  const session=snapshot.social?.active?.find(s=>s.kind==='gift'&&s.participants?.includes(snapshot.actorId));if(!session)return '';
+  const name=id=>snapshot.actors?.find(a=>a.id===id)?.name||id,object=snapshot.worldObjects?.find(o=>o.id===session.objectId)?.name||snapshot.entities?.find(o=>o.id===session.objectId)?.name||'the gift',giver=snapshot.actorId===session.initiatorId,partner=name(giver?session.partnerId:session.initiatorId);
+  if(session.phase==='invited')return giver?'Waiting for '+partner+' to accept '+object:'Deciding whether to accept '+object+' from '+partner;
+  if(session.phase==='approaching')return giver?'Bringing '+object+' to '+partner:'Waiting to receive '+object+' from '+partner;
+  if(session.phase==='giving')return session.transferred?'Finishing the handoff of '+object:giver?'Handing '+object+' to '+partner:'Receiving '+object+' from '+partner;
+  return '';
+}
 function planStatus(snapshot){
   const plan=snapshot.planSteps||[],index=snapshot.planIndex||0;
   if(snapshot.stage==='failed')return plan.length?'Plan blocked · '+(plan[index]?.label||'No further step available'):'Request blocked · no executable plan';
   if(snapshot.stage==='suspended')return 'Plan paused';
-  const waiting=socialWaitingStatus(snapshot);if(waiting)return waiting;
+  const social=socialActivityStatus(snapshot);if(social)return social;
   if(plan.length)return index>=plan.length?'Plan completed':(snapshot.stage==='verify_step'?'Verifying ':snapshot.stage==='awaiting_step_done'?'Assessing ':'Step ')+(index+1)+' of '+plan.length+' · '+(plan[index]?.label||'');
   if(snapshot.stage==='action_plan')return 'Gemma is preparing the plan';
   if(snapshot.stage==='goal_select')return 'Choosing a personal goal';
@@ -133,17 +168,25 @@ function planStatus(snapshot){
   return snapshot.stage==='complete'?'Goal completed':'No active plan';
 }
 function socialRecordMarkup(record,snapshot){
+  if(record.kind==='gift'||record.giftEvidence?.kind==='gift')return giftRecordMarkup(record,snapshot);
   const name=id=>snapshot.actors?.find(a=>a.id===id)?.name||snapshot.characters?.find(a=>a.id===id)?.name||id||'Character',participants=(record.participants||[]).map(name).join(' & '),transcript=record.transcript||[];
   const session=[...(snapshot.social?.active||[]),...(snapshot.social?.history||[])].find(s=>s.id===record.sessionId),waiting='Waiting for '+name(record.partnerId||session?.partnerId||record.participants?.[1])+' to finish their activity';
   const phase={waiting,invited:'Invitation sent',accepted:'Invitation accepted',approaching:'Getting together',generating:'Choosing what to say',speaking:'Talking',delivered:'Speech delivered',complete:'Conversation completed',completed:'Conversation completed',declined:'Invitation declined',canceled:'Conversation interrupted'}[record.status]||title(record.status),outcome=record.reason||record.outcome;
   return `<summary><span class="eyebrow">Conversation · ${clock(record.time)} · ${esc(phase)}</span><span class="question">${esc(participants||'Conversation')}</span>${outcome?`<span class="answer">${esc(friendlyLabel(outcome))}</span>`:''}</summary><div class="details"><div class="social-transcript">${transcript.map(line=>`<p><strong style="--actor-color:${actorColor(line.speakerId)}">${esc(line.speakerName||name(line.speakerId))}</strong><span>“${esc(friendlyLabel(line.text))}”</span></p>`).join('')||'<p class="note">No words delivered yet.</p>'}</div><details><summary>Actual input & output</summary><pre>${esc(JSON.stringify(record,null,2))}</pre></details></div>`;
 }
+function giftRecordMarkup(record,snapshot){
+  const evidence=record.giftEvidence,name=id=>snapshot.actors?.find(a=>a.id===id)?.name||snapshot.characters?.find(a=>a.id===id)?.name||id||'Character',giverId=evidence?.giverId||record.participants?.[0],recipientId=evidence?.recipientId||record.participants?.[1],giver=name(giverId),recipient=name(recipientId),objectId=record.objectId||evidence?.objectId,object=record.objectName||snapshot.worldObjects?.find(o=>o.id===objectId)?.name||snapshot.entities?.find(o=>o.id===objectId)?.name||objectId||'Gift';
+  const transferred=evidence?.transferred===true&&evidence.transferCount===1&&evidence.after?.carried===true&&evidence.after.carrier===recipientId;
+  const phases={waiting:'Waiting for '+recipient+' to finish their activity',invited:'Gift offered',accepted:'Gift accepted',approaching:'Bringing the gift over',giving:'Handoff in progress',transferred:'Physical transfer recorded',complete:'Handoff completed',completed:'Handoff completed',declined:'Gift declined',canceled:'Handoff interrupted'},phase=phases[record.status]||title(record.status);
+  const proof=transferred?recipient+' received '+object+(record.status==='canceled'?'; the physical transfer remains recorded.':'.'):['declined','canceled'].includes(record.status)?'No completed transfer is recorded in this event.':record.status==='accepted'?'Acceptance recorded; the physical handoff is still to come.':'The object has not been transferred in this event.';
+  return `<summary><span class="eyebrow">Gift · ${clock(record.time)} · ${esc(phase)}</span><span class="question">${esc(giver)} → ${esc(recipient)} · ${esc(object)}</span><span class="answer">${esc(friendlyLabel(record.reason||record.outcome||proof))}</span></summary><div class="details"><p class="note">${esc(proof)}</p><details><summary>Actual input & output</summary><pre>${esc(JSON.stringify(record,null,2))}</pre></details></div>`;
+}
 function socialModelMarkup(record,snapshot){
-  const acceptance=record.purpose==='acceptance'||record.source==='laya',speaker=record.input?.speaker,speakerId=speaker?.id||record.actorId||snapshot.actorId,name=speaker?.name||snapshot.actors?.find(a=>a.id===speakerId)?.name||snapshot.actorName||'Character',raw=`<details><summary>Actual input & output</summary><pre>${esc(JSON.stringify(record,null,2))}</pre></details>`;
+  const gift=record.kind==='gift'||/gift\s*acceptance/i.test(record.purpose||''),acceptance=gift||record.purpose==='acceptance'||record.source==='laya',speaker=record.input?.speaker,speakerId=speaker?.id||record.actorId||snapshot.actorId,name=speaker?.name||snapshot.actors?.find(a=>a.id===speakerId)?.name||snapshot.actorName||'Character',raw=`<details><summary>Actual input & output</summary><pre>${esc(JSON.stringify(record,null,2))}</pre></details>`;
   if(acceptance){
     const choices=record.choices||{},choice=record.response?.choice??record.choice,probabilities=record.response?.probabilities||{},selected=Object.hasOwn(choices,choice)?choices[choice]:null,answer=record.error||selected||(record.status==='completed'?'No valid choice recorded':'Choosing a response…');
     const options=Object.entries(choices).map(([key,label],i)=>{const p=Array.isArray(probabilities)?probabilities[i]:probabilities[key];return `<div class="option ${choice===key?'picked':''}"><span>${choice===key?'✓ ':''}${esc(friendlyLabel(label))}</span>${Number.isFinite(p)?`<strong>${(p*100).toFixed(1)}%</strong>`:''}</div>`;}).join('');
-    return `<summary><span class="eyebrow">Conversation choice · ${esc(name)} · ${clock(record.time)}</span><span class="question">${esc(record.question||'Accept the conversation invitation?')}</span><span class="answer">${esc(friendlyLabel(answer))}</span></summary><div class="details">${options}${raw}</div>`;
+    return `<summary><span class="eyebrow">${gift?'Gift choice':'Conversation choice'} · ${esc(name)} · ${clock(record.time)}</span><span class="question">${esc(record.question||(gift?'Accept this gift?':'Accept the conversation invitation?'))}</span><span class="answer">${esc(friendlyLabel(answer))}</span></summary><div class="details">${options}${raw}</div>`;
   }
   const speech=record.value?.speech,failed=record.status==='failed',label=failed?'Speech generation failed':speech?'Generated speech':'Generating speech',text=record.error||speech||'Preparing a conversation turn…';
   return `<summary><span class="eyebrow">${esc(label)} · ${esc(name)} · ${clock(record.time)}</span><span class="question">${esc(name)}${speech?'’s proposed words':''}</span></summary><div class="details"><div class="social-transcript"><p><strong style="--actor-color:${actorColor(speakerId)}">${esc(name)}</strong><span>${speech?'“':''}${esc(friendlyLabel(text))}${speech?'”':''}</span></p></div>${speech?'<p class="note">Generated only. Delivery is recorded in conversation cards.</p>':''}${raw}</div>`;
@@ -174,12 +217,13 @@ function updateMovementMarker(){
   if(arrivalAt!==null&&lastDestination){const progress=Math.min(1,(state.time-arrivalAt)/1.25);renderDestinationMarker(lastDestination,reducedMotion.matches?0:state.time,1-progress,1+.4*progress);if(progress===1)arrivalAt=null;}else renderDestinationMarker(null,0);
 }
 function renderUI(){
-  renderPauseControl();$('#activity-summary').textContent=state.control.paused?'Simulation paused':socialWaitingStatus(state)||title(state.job?.action||state.stage);
+  reconcileActorSelection();renderPauseControl();$('#activity-summary').textContent=state.control.paused?'Simulation paused':socialActivityStatus(state)||title(state.job?.action||state.stage);
   const plan=state.planSteps||[],index=state.planIndex||0,move=activeMovement();$('#plan-progress').innerHTML=movementSwatch(move)+esc(friendlyLabel(planStatus(state)));const planSignature=JSON.stringify([plan,index,move?.key]);if($('#plan-list').dataset.signature!==planSignature){$('#plan-list').dataset.signature=planSignature;$('#plan-list').innerHTML=plan.map((step,n)=>'<li class="'+(n<index?'done':n===index?'current':'')+'">'+(n===index?movementSwatch(move):'')+esc(friendlyLabel(step.label||step.action))+'</li>').join('');}
   $('#character-name').textContent=state.actorName;$('#character-style').textContent=state.style||'';$('#stage').textContent=title(state.stage);$('#objective').textContent=friendlyLabel(state.objective);$('.goal>span').textContent=(state.goalSource==='user'?'Your goal':state.goalSource==='need interruption'?'Temporary need · your goal will resume':'Self-selected goal');$('#talk-label').textContent='Tell '+state.actorName+' something';$('#send').ariaLabel='Send to '+state.actorName;$('#needs').innerHTML=Object.entries(state.needs||{}).map(([key,n])=>`<div class="need"><span>${title(key)} <small>${Math.round(n)}</small></span><i><b style="width:${key==='hunger'?100-n:n}%"></b></i></div>`).join('');
-  $('#cast').hidden=state.actors.length<2;const castSignature=JSON.stringify(state.actors.map(a=>[a.id,a.name,a.id===state.actorId,a.stage]));if($('#cast').dataset.signature!==castSignature){$('#cast').dataset.signature=castSignature;$('#cast').innerHTML=state.actors.map(a=>`<button type="button" class="${a.id===state.actorId?'active':''}" style="--actor-color:${actorColor(a.id)}" data-actor="${esc(a.id)}" aria-pressed="${a.id===state.actorId}">${esc(a.name)}<small>${a.stage==='idle'?'○':a.stage==='complete'?'✓':a.stage==='failed'?'!':'·'}</small></button>`).join('');$$('#cast [data-actor]').forEach(b=>b.onclick=()=>{if(!freshSnapshot()||!state.actors.some(a=>a.id===b.dataset.actor))return;const actorId=b.dataset.actor;selected=null;void call('/api/select',{actorId});});}
+  $('#cast').hidden=state.actors.length<2;const castSignature=JSON.stringify(state.actors.map(a=>[a.id,a.name,a.id===state.actorId,a.stage]));if($('#cast').dataset.signature!==castSignature){$('#cast').dataset.signature=castSignature;$('#cast').innerHTML=state.actors.map(a=>`<button type="button" class="${a.id===state.actorId?'active':''}" style="--actor-color:${actorColor(a.id)}" data-actor="${esc(a.id)}" aria-pressed="${a.id===state.actorId}">${esc(a.name)}<small>${a.stage==='idle'?'○':a.stage==='complete'?'✓':a.stage==='failed'?'!':'·'}</small></button>`).join('');$$('#cast [data-actor]').forEach(b=>b.onclick=()=>void selectActor(b.dataset.actor));}
+  renderRequestControls();
   $$('[data-brain]').forEach(el=>el.classList.toggle('active',state.inference.activeRequests?.some(r=>r.kind===el.dataset.brain&&r.actorId===state.actorId)));
-  $('#busy').textContent=friendlyLabel(state.error||socialWaitingStatus(state)||state.inference.label||(state.job?title(state.job.action)+'…':state.stage==='idle'?'Ready to listen':state.stage==='complete'?'Planned actions completed':state.stage==='suspended'?'Tell me to continue, or give me a new goal':title(state.stage)));
+  $('#busy').textContent=friendlyLabel(state.error||socialActivityStatus(state)||state.inference.label||(state.job?title(state.job.action)+'…':state.stage==='idle'?'Ready to listen':state.stage==='complete'?'Planned actions completed':state.stage==='suspended'?'Tell me to continue, or give me a new goal':title(state.stage)));
   const request=state.lastUserGoal,requestStatus=$('#request-status'),failedRequest=request?.status==='failed';requestStatus.hidden=!request?.text||(state.goalSource==='user'&&!failedRequest);if(!requestStatus.hidden){$('#request-state').textContent=failedRequest?'Request blocked:':request.status==='completed'?'Request completed:':'Your request:';$('#request-text').textContent=friendlyLabel(request.text);requestStatus.title=[request.text,request.error].filter(Boolean).map(friendlyLabel).join('\n');requestStatus.classList.toggle('failed-request',failedRequest);$('#retry-request').hidden=!failedRequest;}
   const scroll=$('#panel-scroll'),scrollTop=scroll.scrollTop,anchor=scrollAnchor(scroll,'.entry'),firstLoad=feedActor!==state.actorId;let added=0,changed=0;if(firstLoad){feedActor=state.actorId;rows.clear();memoryRows.clear();$('#history').replaceChildren();$('#memory-list').replaceChildren();$('#memory-list').dataset.signature='';}
   const shown=state.logs.filter(l=>['laya','reflection','action_outcome','error','activity_plan','plan','outcome','design','goal','inspection','observation','step_verification','social','social_model'].includes(l.type));
@@ -218,7 +262,7 @@ function objectRequest(action,info){
 }
 function renderSelection(){
   const card=$('#selection-card'),info=selectionInfo(selected);if(!state||!info){card.hidden=true;return;}card.hidden=false;
-  const attrs=info.attributes||{},actions=selectionActions(selected),canRequest=freshSnapshot()&&!selectionInFlight;
+  const attrs=info.attributes||{},actions=selectionActions(selected),canRequest=freshSnapshot()&&!selectionInFlight&&!actorSelection&&!objectiveInFlight;
   const facts=[['Mass',Number.isFinite(info.mass)?Number(info.mass.toFixed(2))+' kg':'Fixed fixture'],['Size',(info.dimensions||[]).map(n=>Number(n.toFixed(2))).join(' × ')+' m'],['Material',info.material&&info.material!=='unspecified'?title(info.material):'Not specified'],['Handling',attrs.anchored?'Anchored':attrs.portable?'Portable':'Not portable'],['Food',attrs.edible?(attrs.servings||0)+' servings':'Not edible']];
   if(attrs.throwable)facts.push(['Throw limit',attrs.maxThrowSpeed+' m/s']);
   const signature=JSON.stringify([state.epoch,state.actorId,selected,info.name,info.description,facts,actions.map(a=>[actionKey(a),a.label]),canRequest,info.blockedActions]);if(card.dataset.signature===signature)return;card.dataset.signature=signature;const limitsOpen=!!card.querySelector('.object-limits[open]');
@@ -226,17 +270,17 @@ function renderSelection(){
 }
 $('#selection-card').addEventListener('click',async event=>{
   if(event.target.closest('#selection-close')){selected=null;renderSelection();return;}
-  const button=event.target.closest('button[data-action-key]');if(!button||selectionInFlight||!freshSnapshot())return;
+  const button=event.target.closest('button[data-action-key]');if(!button||selectionInFlight||actorSelection||objectiveInFlight||!freshSnapshot())return;
   if(button.dataset.objectId!==selected||button.dataset.epoch!==String(state.epoch)||button.dataset.actorId!==state.actorId)return;
   const info=selectionInfo(selected),action=selectionActions(selected).find(a=>actionKey(a)===button.dataset.actionKey);
   if(!info||!action){toast('That action is no longer available.');renderSelection();return;}
   const objective=objectRequest(action,info);if(!objective)return;
   if(objective.length>240){toast('This request is too long. Use the message box to describe it.');return;}
-  const epoch=state.epoch;selectionInFlight=true;renderSelection();try{await post('/api/objective',{actorId:state.actorId,objective});if(state.epoch===epoch)toast(state.control.paused?'Request sent. Resume the simulation to continue.':'Request sent to '+state.actorName);}catch(error){toast(error.message);}finally{selectionInFlight=false;renderSelection();}
+  const epoch=state.epoch;selectionInFlight=true;renderRequestControls();renderSelection();try{await post('/api/objective',{actorId:state.actorId,objective});if(state.epoch===epoch)toast(state.control.paused?'Request sent. Resume the simulation to continue.':'Request sent to '+state.actorName);}catch(error){toast(error.message);}finally{selectionInFlight=false;renderRequestControls();renderSelection();}
 });
 $('#reset-scene').onclick=async()=>{const button=$('#reset-scene');button.disabled=true;try{await post('/api/reset',{seed:'garden-'+Date.now()});selected=null;feedActor=null;toast('Scene, goals and memories reset');}catch(error){toast(error.message);}finally{button.disabled=false;}};
-$('#retry-request').onclick=async()=>{const request=state.lastUserGoal;if(!request?.text||request.status!=='failed')return;const button=$('#retry-request');button.disabled=true;try{await post('/api/objective',{objective:request.text});$('#send-status').textContent='Retrying your request';}catch(error){toast(error.message);}finally{button.disabled=false;}};
-$('#talk-form').onsubmit=async event=>{event.preventDefault();const input=$('#objective-input'),text=input.value.trim();if(!text)return;$('#send').disabled=true;try{const goal=/^(continue|resume|keep going)[.!]?$/i.test(text)?state.objective:text;await post('/api/objective',{actorId:state.actorId,objective:goal});input.value='';$('#send-status').textContent='Sent to '+state.actorName;setTimeout(()=>$('#send-status').textContent='',4000);}catch(error){toast(error.message);}finally{$('#send').disabled=false;}};
+$('#retry-request').onclick=async()=>{const request=state.lastUserGoal;if(request?.text&&request.status==='failed')await submitCharacterObjective(request.text);};
+$('#talk-form').onsubmit=async event=>{event.preventDefault();const text=$('#objective-input').value.trim();if(!text)return;const goal=/^(continue|resume|keep going)[.!]?$/i.test(text)?state?.objective:text;await submitCharacterObjective(goal,true);};
 $('#objective-input').onkeydown=event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();$('#talk-form').requestSubmit();}};
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();function cast(event){const rect=renderer.domElement.getBoundingClientRect();mouse.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);ray.setFromCamera(mouse,camera);return ray.intersectObjects(scene.children,true);}
 let pointerStart;renderer.domElement.addEventListener('pointerdown',e=>pointerStart=[e.clientX,e.clientY]);renderer.domElement.addEventListener('pointerup',e=>{if(!state||!pointerStart||Math.hypot(e.clientX-pointerStart[0],e.clientY-pointerStart[1])>4)return;const hit=cast(e).find(h=>h.object.userData.entityId);if(hit){selected=hit.object.userData.entityId;renderSelection();}else{selected=null;renderSelection();}});

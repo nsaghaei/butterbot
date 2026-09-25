@@ -97,7 +97,9 @@ test('holding, force, recipient and reservation preconditions are checked before
   assert.throws(()=>validateAction(garden,brain,{action:'give',target:'cube',recipient:'missing'}),/existing character/);
   assert.throws(()=>validateAction(garden,brain,{action:'give',target:'cube',recipient:'actor'}),/yourself/);
   const recipient={id:'friend',name:'Pat',kind:'character',height:2.3,radius:.32,controller:{},body:{translation:()=>({x:3,y:1.2,z:0})}};entities.set(recipient.id,recipient);
-  assert.throws(()=>validateAction(garden,brain,{action:'give',target:'cube',recipient:'friend'}),/within 2m/);
+  assert.throws(()=>validateAction(garden,brain,{action:'give',target:'cube',recipient:'friend'}),/own brain/);
+  garden.brains=new Map([['actor',brain],['friend',{actor:recipient,actorId:'friend'}]]);garden.social={canGiveRequest:()=>![...entities.values()].some(e=>e.carrier==='friend')};
+  assert.doesNotThrow(()=>validateAction(garden,brain,{action:'give',target:'cube',recipient:'friend'}),'A gift request may begin far away; the coordinated handoff enforces distance at contact');
   recipient.body.translation=()=>({x:1.5,y:1.2,z:0});assert.doesNotThrow(()=>validateAction(garden,brain,{action:'give',target:'cube',recipient:'friend'}));
   other.carried=true;other.carrier='friend';assert.throws(()=>validateAction(garden,brain,{action:'give',target:'cube',recipient:'friend'}),/hands/);
   other.design.attributes={edible:true,servings:1};assert.throws(()=>validateAction(garden,brain,{action:'eat',target:'other'}),/held by another/);

@@ -1,6 +1,6 @@
 # Debugging checkpoint
 
-Diagnostics are shipped in **frozen v18, build `2026-09-25.18`**. The full source suite passed **275/275 tests**. The first two-robot conversation and a stationary tulip handoff passed real model-driven playtests; [PLAYTESTS.md](PLAYTESTS.md) distinguishes those results from earlier failures and unfinished cases.
+Diagnostics are shipped in **frozen v20, build `2026-09-25.20`**. The full source suite passed **308/308 tests**. A consented gift waited through Pip's eating/audit, preserved ownership across a pre-contact pause, transferred once and passed Gemma verification. A subsequent reflection still narrated stale waiting state. [PLAYTESTS.md](PLAYTESTS.md) separates engine success, generated narration defects, historical failures and remaining cases.
 
 ## Available evidence
 
@@ -17,11 +17,17 @@ Engine `social` records capture waiting, acceptance, delivered transcript and co
 
 Preserve the failed v16 pause export, `evidence/v16-paused-conversation-failure.json`: zero fully delivered lines/effects and an orphaned job. v17 then failed on moving-partner availability before creating a session. Those attempts did not succeed merely because model text was generated. v18 replayed the failed saved state successfully.
 
-Cycle 179's tulip gift completed three verified steps after Pip had stopped walking. An offline audit found unresolved moving-recipient range loss and hand conflicts with a recipient's own pickup job. Record future reservation/consent and moving-recipient tests separately; the stationary success does not prove them.
+Historical v18 cycle 179 completed a stationary tulip handoff; its audit exposed range/hand conflicts. v19 introduced consent and reservations: Pip cycle 10 passed a gift to Butterbot with 80.7% acceptance, one transfer at 1.42146 m and a complete 1.4-second gesture. A second request failed while Pip temporarily held food during its eating job. Preserve ignored `evidence/v19-consented-gift.json`, `evidence/v19-temporary-hands-failure.json` and the replay save.
+
+v20 cycle 182 replayed that failed save. Pip finished eating at 4962.4167 with four servings remaining; the gift waited through the audit, verified at 4966.60. Acceptance was 87.93% versus 12.07%, context 330/362. Paused at 0.6667/1.4 seconds before contact: transfer count zero and donor-held ownership. After UI Resume, contact at 4968.2667 and 1.627823 m changed owner/carrier actor → pip once. Gesture completed at 4968.9333 and Gemma verified at 4973.45, without error/retry or social reward. Local ignored export: `evidence/v20-verified-waiting-gift.json`.
+
+Gift `social_model` records have `kind:'gift'` and purpose `gift acceptance`; their probabilities describe consent, not a completed transfer. Engine `social` records and `giftEvidence` retain object/giver/recipient IDs, accepted/transferred flags, transfer count/time, before/after owner/carrier/carried/position, contact positions/distance, gesture duration/progress and cancellation reason. Cancellation after contact must preserve the actual transfer proof. Do not infer transfer from acceptance or erase it because a later gesture was interrupted.
+
+At 4978.9, post-completion reflection falsely described Pip still being occupied and Butterbot waiting to present the tulip. The completed plan, actual gift evidence and stale bubble were visible together. This is a narration-grounding defect, not evidence that ownership failed. Both handoff poses and the 375 × 812 gift-result panel were checked; no horizontal overflow or browser-console errors occurred.
 
 ## Remaining verification and limits
 
-- Continue cancellation, reset/reload, provider-failure and concurrent-recipient checks in isolated worlds, then playtest the integrated single live server. Preserve saves and do not run competing model-driven servers.
+- Ground reflections in current recorded outcomes and keep the v20 stale-narration example for regression. Continue gift decline, occupied/busy recipient, cancellation before/after contact, reset/reload and provider-failure checks in isolated worlds, then playtest the integrated single live server. Preserve saves and do not run competing model-driven servers.
 - Improve noisy social lifecycle/model cards and consider a dedicated active-session section in the diagnostic report. Logs from both brains may contain copies of a shared session event; use session and record IDs when interpreting effects.
 - Broaden actual HTTP/shutdown checks on the Windows launch mechanism. Hard termination cannot guarantee a final flush; periodic capture and normal save flushing remain the fallback.
 - The report cannot recover model text never logged. Polling can miss transitions that occur entirely between captures; bounded recent records are not a complete journal. Later reconstructed context is not the original model input.

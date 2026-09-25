@@ -8,6 +8,11 @@ function section(start,end){const a=source.indexOf(start),b=source.indexOf(end,a
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function helpers(extra={}){const context=vm.createContext({esc,title:s=>String(s),clock:n=>String(n),...extra});vm.runInContext(section('function actorColor','function updateActorDialogue').replace("ensureActorAvatar('actor');selected=null;",'')+section('function feedTone','function needEffectMarkup')+section('function friendlyLabel','function movementColor')+section('function selectionInfo','function renderSelection'),context);return context;}
 const plain=value=>JSON.parse(JSON.stringify(value));
+function requestFixture(){
+  const nodes=new Map(['objective-input','send','retry-request','talk-form','talk-label','send-status'].map(id=>['#'+id,{disabled:false,textContent:'',value:'A quick new goal',attributes:{},setAttribute(k,v){this.attributes[k]=v;}}])),buttons=[{disabled:false},{disabled:false}],requests=[],errors=[];
+  const context=vm.createContext({state:{epoch:1,actorId:'actor',actorName:'Butterbot',actors:[{id:'actor',name:'Butterbot'},{id:'pip',name:'Pip'}]},selectionInFlight:false,selected:null,freshSnapshot:()=>true,$:id=>nodes.get(id),$$:()=>buttons,renderSelection:()=>{},toast:error=>errors.push(error),setTimeout:()=>0,post:(path,data)=>{const request={path,data};requests.push(request);if(path!=='/api/select')return Promise.resolve({ok:true});return new Promise((resolve,reject)=>Object.assign(request,{resolve,reject}));}});
+  context.renderUI=()=>{context.reconcileActorSelection();context.renderRequestControls();};vm.runInContext(section('let actorSelection','function renderPauseControl'),context);return {context,nodes,buttons,requests,errors};
+}
 
 test('cast reconciliation creates each robot once, retains physical objects, and removes a departed actor',()=>{
   const objects=new Map(),designs=new Map(),loading=new Map(),created=[],removed=[],scene={add:o=>created.push(o)};
@@ -76,4 +81,35 @@ test('queued conversation names the busy partner without implying acceptance or 
   const html=h.socialRecordMarkup({type:'social',status:'waiting',sessionId:'social-3',participants:['actor','pip'],time:5},snapshot);assert.match(html,/Waiting for Pip to finish their activity/);assert.ok(!html.includes('Invitation accepted'));assert.match(html,/No words delivered yet/);
   snapshot.actorId='pip';snapshot.stage='acting';snapshot.planSteps=[{label:'Walk around the garden'}];assert.equal(h.socialWaitingStatus(snapshot),'');assert.match(h.planStatus(snapshot),/Walk around the garden/);
   snapshot.actorId='actor';snapshot.social.active[0].phase='invited';assert.equal(h.socialWaitingStatus(snapshot),'','being invited is distinct from waiting for availability');
+});
+
+test('gift acceptance shows all consent probabilities and never labels the decision as conversation',()=>{
+  const h=helpers(),record={type:'social_model',kind:'gift',purpose:'gift acceptance',source:'laya',status:'completed',time:1,choices:{accept:'Accept the Orange Tulip',decline:'Decline the gift'},response:{choice:'accept',probabilities:{accept:.75,decline:.25}}},html=h.socialModelMarkup(record,{actorId:'pip',actorName:'Pip'});
+  assert.match(html,/Gift choice · Pip/);assert.match(html,/75\.0%/);assert.match(html,/25\.0%/);assert.match(html,/✓ Accept the Orange Tulip/);assert.ok(!html.includes('Conversation choice'));assert.ok(!html.includes('received'));assert.equal(h.feedStartsOpen(record),true);
+});
+
+test('gift cards distinguish consent from physical transfer and retain proof after cancellation',()=>{
+  const h=helpers(),snapshot={actors:[{id:'actor',name:'Butterbot'},{id:'pip',name:'Pip'}],worldObjects:[{id:'flower',name:'Orange Tulip'}]},base={type:'social',kind:'gift',objectId:'flower',participants:['actor','pip'],time:2};
+  const accepted=h.socialRecordMarkup({...base,status:'accepted'},snapshot);assert.match(accepted,/Gift accepted/);assert.match(accepted,/Acceptance recorded; the physical handoff is still to come/);assert.ok(!accepted.includes('Conversation'));assert.ok(!accepted.includes('Pip received'));
+  const evidence={kind:'gift',objectId:'flower',giverId:'actor',recipientId:'pip',transferred:true,transferCount:1,after:{owner:'pip',carrier:'pip',carried:true},gesture:{duration:1.4,elapsed:.8,completed:false}};
+  const canceled=h.socialRecordMarkup({...base,status:'canceled',giftEvidence:evidence,reason:'Recipient reassigned'},snapshot);assert.match(canceled,/Handoff interrupted/);assert.match(canceled,/Pip received Orange Tulip; the physical transfer remains recorded/);assert.match(canceled,/Recipient reassigned/);assert.match(canceled,/transferCount/);
+  const completed=h.socialRecordMarkup({...base,status:'completed',giftEvidence:{...evidence,gesture:{duration:1.4,elapsed:1.4,completed:true}}},snapshot);assert.match(completed,/Handoff completed/);assert.match(completed,/Pip received Orange Tulip/);
+  const unproven=h.socialRecordMarkup({...base,status:'canceled',giftEvidence:{...evidence,after:{carrier:'actor',carried:true}}},snapshot);assert.ok(!unproven.includes('Pip received Orange Tulip'));
+});
+
+test('active gift status names giver, recipient and object without calling it a conversation',()=>{
+  const h=helpers(),session={kind:'gift',initiatorId:'actor',partnerId:'pip',participants:['actor','pip'],objectId:'flower',phase:'invited',transferred:false},snapshot={actorId:'actor',stage:'socializing',actors:[{id:'actor',name:'Butterbot'},{id:'pip',name:'Pip'}],worldObjects:[{id:'flower',name:'Orange Tulip'}],social:{active:[session]}};
+  assert.equal(h.planStatus(snapshot),'Waiting for Pip to accept Orange Tulip');session.phase='giving';assert.equal(h.socialActivityStatus(snapshot),'Handing Orange Tulip to Pip');snapshot.actorId='pip';assert.equal(h.socialActivityStatus(snapshot),'Receiving Orange Tulip from Butterbot');session.transferred=true;assert.equal(h.planStatus(snapshot),'Finishing the handoff of Orange Tulip');
+});
+
+test('character selection disables real request controls until API acknowledgment and the selected SSE state both arrive',async()=>{
+  const {context:c,nodes,buttons,requests}=requestFixture(),switching=c.selectActor('pip');assert.equal(nodes.get('#send').disabled,true);assert.equal(nodes.get('#objective-input').disabled,true);assert.ok(buttons.every(b=>b.disabled));assert.equal(nodes.get('#talk-label').textContent,'Switching to Pip…');
+  assert.equal(await c.submitCharacterObjective('Dance'),false);assert.equal(requests.length,1,'quick submission must not target Butterbot');requests[0].resolve({ok:true});await switching;assert.equal(nodes.get('#send').disabled,true,'HTTP completion alone does not confirm the selected snapshot');assert.equal(await c.submitCharacterObjective('Dance'),false);
+  c.state={...c.state,actorId:'pip',actorName:'Pip'};c.renderUI();assert.equal(nodes.get('#send').disabled,false);assert.equal(nodes.get('#talk-label').textContent,'Tell Pip something');assert.equal(await c.submitCharacterObjective('Dance',true),true);assert.deepEqual(plain(requests.at(-1).data),{actorId:'pip',objective:'Dance'});assert.equal(nodes.get('#objective-input').value,'');
+});
+
+test('selection also waits when SSE arrives first, and a failed or superseded selection cannot leave controls locked',async()=>{
+  const {context:c,nodes,requests,errors}=requestFixture(),switching=c.selectActor('pip');c.state={...c.state,actorId:'pip',actorName:'Pip'};c.renderUI();assert.equal(nodes.get('#send').disabled,true,'SSE alone does not acknowledge the request');requests[0].resolve({ok:true});await switching;assert.equal(nodes.get('#send').disabled,false);
+  const failing=c.selectActor('actor');requests[1].reject(Error('Selection unavailable'));await failing;assert.equal(nodes.get('#send').disabled,false);assert.equal(nodes.get('#talk-label').textContent,'Tell Pip something');assert.deepEqual(errors,['Selection unavailable']);
+  const stale=c.selectActor('actor');c.state={...c.state,epoch:2};c.renderUI();requests[2].resolve({ok:true});await stale;assert.equal(nodes.get('#send').disabled,false);assert.equal(nodes.get('#talk-label').textContent,'Tell Pip something','old response cannot override the current actor');
 });

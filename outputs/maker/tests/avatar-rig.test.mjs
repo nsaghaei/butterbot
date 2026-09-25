@@ -17,6 +17,17 @@ test('Butterbot and Pip have independent connected bodies and visibly distinct p
   }
   assert.equal(butter.position.x,0);assert.equal(pip.position.x,2);assert.equal(butter.userData.human.head.rotation.x,0);assert.notEqual(pip.userData.human.head.rotation.x,0,'only the listener nods');
 });
+test('receiving hands follow physical targets and keep supporting the held object after the handoff',()=>{
+  const model=avatar('pip',{mesh}),base={position:{x:3,y:.95,z:2},heading:0,rig:{pose:{targets:{forearmL:{x:2.84,y:1.2,z:2.45},forearmR:{x:3.16,y:1.2,z:2.45}}}}};
+  for(const activity of ['receive','idle'])for(const progress of [0,.25,.5,.75,1]){
+    updateAvatar(model,{...base,activity,actionProgress:progress});model.updateMatrixWorld(true);
+    for(const chain of Object.values(model.userData.human.arms)){
+      const shoulder=chain.upper.getWorldPosition(new THREE.Vector3()),elbow=chain.lower.getWorldPosition(new THREE.Vector3()),hand=chain.end.getWorldPosition(new THREE.Vector3()),local=model.worldToLocal(hand.clone());
+      assert.ok(local.z>.3&&local.y>1,'hands stay raised in front at the physical carry target');assert.ok(Math.abs(shoulder.distanceTo(elbow)-chain.lengths[0])<1e-6);assert.ok(Math.abs(elbow.distanceTo(hand)-chain.lengths[1])<1e-6);
+    }
+    model.traverse(o=>assert.ok(o.matrixWorld.elements.every(Number.isFinite)));
+  }
+});
 test('robot remains connected with fixed limb lengths through walking, object actions, washing and furniture poses',()=>{
 const model=avatar('actor',{mesh}),p=new Physics();let previous=p.snapshot()[0],checked=0;
 function check(e){

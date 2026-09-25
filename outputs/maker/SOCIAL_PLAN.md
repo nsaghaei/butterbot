@@ -1,6 +1,6 @@
 # First social milestone and continuation
 
-**Implemented in frozen v18, build `2026-09-25.18`; 275/275 offline tests passed.** Butterbot and Pip are visible independent robots. The real model-driven two-turn conversation passed, including waiting for a moving partner's existing activity and pausing/resuming during speech. This is the first duo milestone; the broader social simulation remains unfinished.
+**Current checkpoint: frozen v20, build `2026-09-25.20`; 308/308 offline tests passed.** Butterbot and Pip are visible independent robots with grounded two-turn conversations and consented physical gifts. v18 verified conversation and mid-speech pause/resume; v20 verified waiting through Pip's eating/audit, recipient acceptance and a paused gift handoff before contact. The broader social simulation remains unfinished, and post-action reflections can still describe stale state.
 
 ## Implemented behavior
 
@@ -14,6 +14,8 @@ Inference and availability waiting earn no social participation. Both speaking/l
 
 Pause preserves the active session and excludes paused wall time from phase deadlines. Reassignment, removal, separation, timeout or generation failure cancels it. Stale jobs fail rather than remaining stuck in `socializing`. Reload cancels unfinished sessions and replans; completed evidence remains without replaying effects. Model slots are shared across reset so stale requests cannot create overlapping inference.
 
+Gifts use the same paired-session infrastructure with `kind:'gift'`: wait for an eligible recipient, request its Laya acceptance, reserve both participants, approach and perform a 1.4-second give/receive gesture. Temporary hands occupied by the recipient's current eligible job do not cause premature refusal; that job and its audit finish before free hands are checked. An occupied ready recipient is rejected without a forced drop. Actual contact transfers owner/carrier once; its evidence remains distinct from later gesture completion, including cancellation after contact. Giving does not invent conversation rewards or relationship changes. The UI shows gift consent probabilities, waiting/handoff status and physical evidence; character switching locks requests until both the API acknowledgment and matching state update arrive.
+
 ## Actual live evidence
 
 - **v16, cycle 176 failed:** acceptance and approach occurred, but pausing during the first line invalidated participant revisions. Resuming canceled the session with zero fully delivered turns/effects and left an orphaned job.
@@ -21,20 +23,23 @@ Pause preserves the active session and excludes paused wall time from phase dead
 - **v18, cycle 178 passed:** replayed “Go chat with Pip about your favorite things in this garden.” Waiting began at 4862.60; Pip's walk verified at 4865.73; invitation accepted at 4866.02. Butterbot delivered 5.48 seconds, including a deliberate pause at 2.0167 seconds and UI resume; Pip delivered six seconds. Both lines completed at 4886.4. Actual participation was 11.48 seconds; capped rewards applied social +40 and fun +6 to both once. Gemma verified the sole plan step at 4890.48, with no errors, retries or navigation recoveries.
 - Desktop robots/bubbles and the 375 × 812 mobile layout were visually checked; browser console had zero errors. Pip's panel showed 74.8% accept / 25.2% decline and one memory from its delivered line.
 - **v18, cycle 179 passed a stationary handoff:** pickup → approach → give of the Orange Tulip, all 3/3 steps verified. Pip finished its requested walk before the handoff. This does not establish moving-recipient gifting.
+- **v19, Pip cycle 10 passed a consented gift:** “Give the Orange Tulip to Butterbot.” Acceptance was 80.7% versus 19.3% decline, context 350/362. Contact at 4927.05 and 1.42146 m transferred owner/carrier pip → actor once; the 1.4-second gesture and Gemma audit completed. The later Butterbot cycle 181 request failed while Pip temporarily held food during its own eating job; preserve that failure.
+- **v20, cycle 182 passed the failed-save replay:** “Give the Orange Tulip to Pip after Pip finishes the current activity.” Pip finished eating, leaving four servings, and its audit verified before invitation. Acceptance was 87.93% versus 12.07%, context 330/362. Paused at 0.6667/1.4 seconds before contact, with zero transfers and donor-held ownership; UI Resume continued. Contact at 4968.2667 and 1.627823 m transferred actor → pip once; gesture completed at 4968.9333 and Gemma verified at 4973.45. No error/retry or fabricated social reward.
+- v20 give/receive poses were checked; the 375 × 812 gift-result layout fit without horizontal overflow and browser console had zero errors. A reflection at 4978.9 still falsely described waiting to present the already-transferred gift. Engine evidence is correct; generated narration needs grounding.
 
 See [PLAYTESTS.md](PLAYTESTS.md) for the full history. Raw exports and saves stay ignored and local.
 
 ## Continuation
 
-1. **Gift reservations and consent.** Existing physical give can fail when a recipient leaves the 2 m range, and can fill their hands during their own pickup job. Coordinate recipient availability, free hands and transfer ownership through cancellation-safe reservations. Add recipient acceptance before claiming consent or relationship meaning; repeat live moving/busy-recipient tests.
+1. **Current-outcome reflection.** Correct stale post-action narration using the actual completed plan and latest transfer/delivery evidence. Preserve the v20 mismatch as a regression case. A correct engine result must not be rewritten to match generated fiction.
 2. **Conversation endings.** The current two-turn exchange can finish with an unanswered question. Improve closure before adding longer turn-taking, more participants or relationships. Do not credit undelivered words or model waiting as social success.
 3. **Logs and presentation.** Invitation choices/probabilities, generated turns and delivered transcript cards are distinct, but repeated lifecycle records can be clearer and less noisy. Continue mobile and overlapping-bubble review.
-4. **Recovery and memory.** Broaden real-model cancellation, critical-need, reset and reload checks. Preserve unrelated user work and exactly-once effects. Continue semantic memory curation without automatically deleting distinct or opposite facts.
+4. **Recovery and memory.** Consent and the tested busy-recipient/pause cases now work. Broaden other busy/occupied jobs, decline, cancellation before/after gift contact, critical-need, reset and reload checks. Preserve unrelated user work and exactly-once ownership/effects. Continue semantic memory curation without automatically deleting distinct or opposite facts. Relationships and a full sleep cycle remain future work.
 
 ## Implementation map
 
 - `garden.mjs`, `server-v2.mjs`: independent brains, cast persistence, shared scheduling, pause/reset and public state.
-- `social-jobs.mjs`: waiting, invitation, approach/facing, delivery, participation, effects and cancellation.
+- `social-jobs.mjs`: chat/gift waiting, invitation, reservations, approach/facing, delivery/contact evidence, effects and cancellation.
 - `actions.mjs`, `autonomy.mjs`, `providers.mjs`: grounded social plans/options, acceptance and private per-speaker generation.
-- `work/ui-main.mjs`, `web-next/avatars.js`: both avatars, selection, gestures, bubbles, transcript/model cards and waiting status.
+- `work/ui-main.mjs`, `web-next/avatars.js`: both avatars, confirmed selection, give/receive gestures, bubbles, transcript/gift/model cards and waiting status.
 - `tests/social-*.test.mjs`, `tests/ui-cast.test.mjs`, `tests/avatar-rig.test.mjs`: offline coverage; live evidence above remains separate.

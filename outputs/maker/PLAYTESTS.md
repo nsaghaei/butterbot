@@ -1,10 +1,37 @@
 # Gameplay verification
 
-These are observations from the actual local game using Gemma and Laya. Offline regressions are separate: **v18 passed 275/275; v17 266/266; v16 252/252; v15 213/213; v14 208/208; v13 202/202; v12 196/196; v11 176/176; v10 162/162; v9 147/147**. Saved scenes, prompts and raw diagnostic exports stay outside Git.
+These are observations from the actual local game using Gemma and Laya. Offline regressions are separate: **v20 passed 308/308; v19 304/304; v18 275/275; v17 266/266; v16 252/252; v15 213/213; v14 208/208; v13 202/202; v12 196/196; v11 176/176; v10 162/162; v9 147/147**. Saved scenes, prompts and raw diagnostic exports stay outside Git.
+
+## September 25, 2026 — frozen v20
+
+Build `2026-09-25.20` is the current live release. **308/308 offline tests passed in 9.47 seconds.** This replay fixes v19's temporary-held-food failure and verifies a pause before gift contact. Generated post-action narration still has the stale-state issue below.
+
+| Check | Observed result |
+| --- | --- |
+| “Give the Orange Tulip to Pip after Pip finishes the current activity.” | **Passed, cycle 182, 1/1 give step verified.** Replayed the exact failed save with Pip carrying the orange bowl mid-eating. Pip finished eating at 4962.4167, consuming one serving and leaving four. The gift waited at 4964.833 while Pip's action was audited, then verification completed at 4966.60. |
+| Recipient acceptance. | Invitation at 4966.6167; Pip accepted at 4966.9167 with **87.93% accept / 12.07% decline**, using **330/362 context tokens**. No forced drop. |
+| Pause before contact. | After actual approach, paused at **0.6667/1.4 seconds** of the gesture. Transfer count remained **zero**, with the donor still carrying the tulip. Both give/receive arm poses were checked in the screenshot, then the actual UI Resume continued the handoff. |
+| Transfer and completion. | Contact at **4968.2667**, distance **1.627823 m**, transferred owner/carrier **actor → pip exactly once**. Gesture completed at 4968.9333; Gemma verified at 4973.45. No error/retry and no invented social reward. The game was saved and paused. |
+| Browser/mobile gift-result review. | **Zero console errors.** At **375 × 812**, cast, needs, goal, cards, memory and composer fit without horizontal overflow. Normal viewport was restored. |
+| Post-completion reflection. | **Known failure in generated narration.** At 4978.9, a reflection still described Pip as occupied and Butterbot waiting to present the flower, despite the completed plan and recorded transfer. The stale bubble was visibly present beside the completed result. Engine ownership/evidence remained correct; reflection grounding is the next fix. |
+
+Ignored evidence: `evidence/v20-verified-waiting-gift.json`. The checkpoint tag is `checkpoint-2026-09-25-v20`. These successful physical checks do not establish polished narration, every cancellation path, relationships or a full sleep cycle.
+
+## September 25, 2026 — frozen v19
+
+**304/304 offline tests passed in 9.34 seconds.** The first consented gift passed; a second recipient-waiting attempt failed and motivated v20.
+
+| Check | Observed result |
+| --- | --- |
+| Pip: “Give the Orange Tulip to Butterbot.” | **Passed, Pip cycle 10, one give step plus Gemma audit.** Session social-3: Butterbot accepted with **80.7% / 19.3% decline**, context **350/362**. Contact at 4927.05, distance 1.42146 m, transferred owner/carrier **pip → actor once**. The 1.4-second gesture completed with zero fabricated social need effects. |
+| Gift cards and fast character switching. | Actual DOM gift cards truthfully distinguished acceptance/transfer. Rapid cast switching visibly disabled sending until selection was confirmed. |
+| Butterbot: “Give the Orange Tulip to Pip after Pip finishes the current activity.” | **Failed, cycle 181.** Waiting began at 4956.7 but failed at 4959.92 when Pip temporarily held food during its own orange-bowl eating job. This was not a completed gift. v20 waits through that eligible job and its audit before testing free hands; a ready recipient with occupied hands remains rejected. |
+
+Keep ignored `evidence/v19-consented-gift.json`, `evidence/v19-temporary-hands-failure.json` and the pre-v20 replay save. The later successful replay does not erase the original failure.
 
 ## September 25, 2026 — frozen v18
 
-Build `2026-09-25.18` is the current live release. **275/275 offline tests passed in 8.44 seconds.** Butterbot and Pip are both visible independent robots. This verifies the first duo milestone, not the full social simulation.
+Historical build `2026-09-25.18` established the first duo milestone. **275/275 offline tests passed in 8.44 seconds.** Butterbot and Pip are both visible independent robots. This verifies the first duo milestone, not the full social simulation.
 
 | Check | Observed result |
 | --- | --- |
@@ -13,9 +40,9 @@ Build `2026-09-25.18` is the current live release. **275/275 offline tests passe
 | Actual social effects and final audit. | **11.48 seconds actual nearby participation.** The ten-second reward cap gave each robot social +40 and fun +6 once. Inference/availability waiting earned no reward. Gemma verified completion at 4890.48. The game was saved and paused afterward. |
 | Desktop, mobile and selected character panel. | Robots and speech bubble looked cohesive. At **375 × 812**, cast controls, needs, goal, feeds, memory and composer fit; normal viewport was restored. Browser console had **zero errors**. Selecting Pip showed **74.8% accept / 25.2% decline** and one memory from its delivered line. |
 | “Pick up the Orange Tulip (item-1), carry it over to Pip, and give it to Pip.” | **Passed, cycle 179, 3/3 steps verified:** pickup → approach → give. Pip finished its requested walk before the handoff, then self-planned eating. This verifies a **stationary recipient** only. |
-| Moving-recipient gift audit. | **Unfinished.** An offline audit found that a moving recipient can leave the 2 m transfer range, and a gift can fill hands during the recipient's own pickup job. Reservation and recipient-consent work remains necessary; the stationary live success does not establish moving-gift reliability. |
+| Moving-recipient gift audit. | **Unfinished.** An offline audit found that a moving recipient can leave the 2 m transfer range, and a gift can fill hands during the recipient's own pickup job. At this checkpoint, reservation and recipient consent were missing; later v19/v20 work addresses the tested cases. This stationary result itself does not establish moving-gift reliability. |
 
-Local ignored evidence: `evidence/v18-verified-conversation.json`. The current two-turn conversation can end on an unanswered question; longer exchanges, relationships, consensual gifts and clearer lifecycle records remain continuation work. See [SOCIAL_PLAN.md](SOCIAL_PLAN.md).
+Local ignored evidence: `evidence/v18-verified-conversation.json`. The current two-turn conversation can end on an unanswered question; longer exchanges, relationships and clearer lifecycle records remained continuation work. Consented gift sessions were subsequently implemented and tested in v19/v20. See [SOCIAL_PLAN.md](SOCIAL_PLAN.md).
 
 ## September 25, 2026 — frozen v17
 
@@ -157,4 +184,4 @@ The left-fence printer, keyboard/screen, continuous lawn, neighborhood houses, p
 
 ## Remaining verification
 
-Continue moving/busy-recipient gift reservations and consent; the v18 handoff used a stationary recipient. Improve two-turn conversation closure and noisy lifecycle records, then broaden real-model reassignment, critical-need, separation, timeout, reset/reload and provider-failure checks. Preserve unrelated user work and apply effects once. Continue accommodation edge checks, resource depletion, longer creation/use plans, memory consolidation and remaining poses/viewports. The recorded v18 mobile and pause/resume checks are successful baselines, not exhaustive coverage. Judge physical effects and recorded evidence, not generated completion text alone.
+Ground post-action reflections in current engine outcomes: v20's transfer was correct but its later narration was stale. Improve two-turn conversation endings and redundant gift cards. Broaden busy/occupied recipient, decline, reassignment before/after contact, critical-need, separation, timeout, reset/reload and provider-failure checks. Preserve unrelated user work and apply ownership/effects once. Continue accommodation edges, finite-food depletion, longer creation/use plans, memory consolidation, remaining poses/viewports and clean-machine setup. A full sleep cycle and relationships remain unfinished. The recorded mobile and pause/resume checks are successful baselines, not exhaustive coverage; distinguish generated prose from physical evidence.
